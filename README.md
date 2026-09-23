@@ -1,31 +1,31 @@
 # Markestra
 
-**让中小商家把一次宣传，变成可以持续改进的营销流程。**
+**Turn one promotion into a marketing process that gets better with every campaign.**
 
-Markestra 是一个面向中国中小商家的 AI 营销工作台构想。商家提供真实的店铺、商品和活动信息后，在同一处规划活动、制作适合不同渠道的内容、审核并导出素材，再记录实际结果，为下一次宣传提供依据。
+Markestra is a proposed AI-assisted marketing workspace for small and medium-sized merchants in China. A merchant supplies verified information about their business, products and promotion. In one place, they can plan a campaign, prepare content for different channels, review and export the assets, record actual results, and use those results to plan the next campaign.
 
-> 当前状态（2026-09-23）：产品处于方案与原型准备阶段。本仓库的介绍不代表应用已经开发、上线、接入平台接口，或取得商家使用及营销成效。
+> **Current status (23 September 2026):** Markestra is at the concept and prototype-planning stage. This repository does not claim that the application has been built or launched, that platform APIs have been connected, or that merchants have used it or achieved measurable results.
 
-## 要解决的问题
+## The problem we want to test
 
-小商家往往需要在多个平台重复整理商品信息、改写文案、安排发布并回看效果。我们的待验证假设是：把这些步骤放进一个保留事实、版本和结果的工作流程，能降低重复劳动，让下一次活动有据可依。是否真正解决商家痛点、节省时间或带来经营收益，需要真实使用验证。
+Small merchants may need to reorganise the same product information, rewrite promotional copy, coordinate posts across platforms, and review results using separate tools. Our **unvalidated hypothesis** is that a single workflow preserving product facts, approved versions and campaign results can reduce repetitive work and make the next promotion more informed. Whether it actually saves time, solves a merchant problem or improves business outcomes must be tested with real users.
 
-## 计划中的工作流程
+## Proposed workflow
 
-1. **建立事实库**：记录品牌、商品、价格、图片、受众与活动约束，标明未确认的信息。
-2. **策划一次活动**：选择商品、目标、期限和渠道，生成可编辑的活动方案。
-3. **制作渠道内容**：首版计划支持小红书图文和微信朋友圈图文；抖音视频脚本列为后续扩展。
-4. **人工审核与导出**：商家确认商品事实和最终版本，下载文案、海报与素材包，使用自己的账号发布。导出不等于已发布。
-5. **记录结果并复盘**：手动录入或导入可取得的渠道数据，区分真实数据与演示数据，生成有依据的观察和下一轮待测建议。
+1. **Build a verified business brief.** Record the brand, product, price, images, audience and campaign constraints; flag anything that has not been confirmed.
+2. **Plan a campaign.** Select a product, objective, timeframe and channels, then create an editable campaign plan.
+3. **Prepare channel-specific content.** The first planned scope covers image-and-text posts for Xiaohongshu and WeChat Moments. Douyin video scripts are a possible later extension.
+4. **Review and export.** The merchant checks product facts and approves the final copy and assets before exporting them for publication through their own accounts. Exporting does **not** mean that content has been published.
+5. **Record results and learn.** Enter or import available channel metrics, distinguish real data from demonstrations, and propose a documented question or change to test in the next campaign.
 
-我们把跨活动保存关键变量和结果、逐轮提出可检验调整的机制称为 **Campaign Genome**。它是设计目标，不是已经验证有效的算法；两次活动的差异也不能直接证明因果效果。
+We call the proposed mechanism for retaining campaign variables and results across iterations **Campaign Genome**. It is a product-design goal, not a proven algorithm. Differences between two campaigns alone cannot establish a causal effect.
 
-## 第一版边界
+## First-version scope
 
-目标是先完成一个可保存数据的网页工作台：商品资料 → 活动 → 真实模型生成 → 内容编辑与导出 → 指标录入 → 复盘与下一轮活动。拟采用 TypeScript、Next.js 和 PostgreSQL；具体技术选择和实现状态以未来代码、测试与演示为准。
+The initial goal is a persistent web workspace covering the path from product information to campaign planning, AI-assisted drafting, human editing and export, metric entry, and a review that informs the next campaign. TypeScript, Next.js and PostgreSQL are being considered; actual technology and implementation status will be demonstrated through future code, tests and runnable instructions.
 
-首版**不承诺**跨平台自动发布、自动抓取数据、替商家购买广告、生成完整短视频或打通各平台用户身份。任何平台连接都以正式授权、接口能力和合规审查为前提。
+The first version does **not** promise automatic cross-platform publishing, automatic data scraping, ad purchasing, full short-video generation or cross-platform identity matching. Any future integration would depend on official authorisation, available APIs and a compliance review.
 
-## 项目进度如何核验
+## How to verify progress
 
-后续只有在对应代码、运行说明与测试证据进入本仓库后，才会把功能标为已实现。商家访谈、试点和实际效果也须附可追溯且获授权的记录；未取得的数据保持未知。本仓库用于展示产品方向与将来的公开开发成果，不是 ENT303 每周 Log 和 Evidence Hub 的替代提交入口。
+We will label a feature as implemented only when the corresponding code, setup instructions and test evidence are available. Merchant interviews, pilots and performance claims will require traceable records and appropriate permission; missing data will remain unknown. This repository presents the product direction and, later, public development work. It is **not** the submission location for ENT303 weekly logs or the team's evidence hub.
