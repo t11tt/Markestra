@@ -1,0 +1,311 @@
+@import "tailwindcss";
+
+@theme {
+  /* ---- Type system (modern grotesque, Linear-like) ---- */
+  /* Unified per-glyph stack: Latin -> Inter, CJK -> Noto Sans SC (思源黑体).
+     Inter has no CJK glyphs, so Chinese characters fall back to Noto Sans SC
+     automatically in BOTH locales. English is always Inter. */
+  --font-sans: "Inter", "Noto Sans SC", "PingFang SC", "Microsoft YaHei",
+    ui-sans-serif, system-ui, -apple-system, sans-serif;
+  --font-display: var(--font-sans);
+  /* Dedicated brand wordmark font. Uses licensed Surgena when available,
+     otherwise falls back to Outfit (free, close geometric match). */
+  --font-brand: "Surgena", "Outfit", var(--font-sans);
+
+  /* ---- Accent: refined indigo/violet (Linear brand family) ---- */
+  --color-brand-50: #eef0ff;
+  --color-brand-100: #e0e3ff;
+  --color-brand-200: #c6ccff;
+  --color-brand-300: #a5adff;
+  --color-brand-400: #8b93f2;
+  --color-brand-500: #6e79e0;
+  --color-brand-600: #5e6ad2;
+  --color-brand-700: #4a53b0;
+  --color-brand-800: #383e85;
+  --color-brand-900: #282c5e;
+
+  /* ---- Cool near-black neutrals ---- */
+  --color-ink-950: #08090a;
+  --color-ink-900: #0c0d0f;
+  --color-ink-850: #101113;
+  --color-ink-800: #16181b;
+  --color-ink-700: #1e2024;
+  --color-ink-600: #282a30;
+  --color-ink-500: #363940;
+
+  --color-canvas: #08090a;
+  --color-panel: #101113;
+  --color-elevated: #16181b;
+
+  /* high-contrast text ramp */
+  --color-cream: #f7f8f8; /* primary text (near white) */
+  --color-muted: #9ca1ab; /* secondary */
+  --color-subtle: #6e7379; /* tertiary */
+  --color-line: rgba(255, 255, 255, 0.08);
+  --color-line-strong: rgba(255, 255, 255, 0.14);
+
+  /* semantic */
+  --color-ok: #4cc38a;
+  --color-warn: #e3b341;
+  --color-bad: #f0616d;
+  --color-cool: #57a6ff;
+}
+
+/* Brand wordmark font — Surgena (commercial license required, not bundled).
+   Uses a locally-installed copy if present. To ship the webfont, add the
+   licensed file to /public/fonts and uncomment the url() src below. */
+@font-face {
+  font-family: "Surgena";
+  src: local("Surgena"), local("Surgena SemiBold"), local("Surgena-SemiBold");
+  /* , url("/fonts/Surgena-SemiBold.woff2") format("woff2"); */
+  font-weight: 100 900;
+  font-display: swap;
+}
+
+.font-brand {
+  font-family: var(--font-brand);
+  font-weight: 600;
+  letter-spacing: -0.03em;
+}
+
+:root {
+  color-scheme: dark;
+  --shadow-card: 0 0 0 1px rgba(255, 255, 255, 0.02) inset,
+    0 12px 32px -16px rgba(0, 0, 0, 0.8);
+  --shadow-pop: 0 24px 70px -24px rgba(0, 0, 0, 0.85);
+  --glow-accent: 0 0 0 1px rgba(110, 121, 224, 0.35),
+    0 8px 28px -10px rgba(94, 106, 210, 0.55);
+}
+
+html,
+body {
+  height: 100%;
+}
+
+body {
+  background: var(--color-canvas);
+  color: var(--color-cream);
+  font-family: var(--font-sans);
+  font-feature-settings: "cv11", "ss01";
+  letter-spacing: -0.006em;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+/* headings: same grotesque, tighter + heavier */
+.font-display {
+  font-family: var(--font-sans);
+  font-weight: 600;
+  letter-spacing: -0.025em;
+}
+
+.text-balance {
+  text-wrap: balance;
+}
+.text-pretty {
+  text-wrap: pretty;
+}
+
+/* ---- Surfaces ---- */
+.card {
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.03), rgba(255, 255, 255, 0)),
+    var(--color-panel);
+  border: 1px solid var(--color-line);
+  border-radius: 14px;
+  box-shadow: var(--shadow-card);
+}
+
+/* glass panel */
+.glass {
+  background: rgba(255, 255, 255, 0.025);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  border: 1px solid var(--color-line);
+}
+
+/* ---- Light & shadow (Linear-style aurora) ---- */
+.glowfield {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+}
+.glowfield::before,
+.glowfield::after {
+  content: "";
+  position: absolute;
+  border-radius: 9999px;
+  filter: blur(90px);
+  opacity: 0.55;
+}
+.glowfield::before {
+  width: 640px;
+  height: 640px;
+  left: -8%;
+  top: -30%;
+  background: radial-gradient(circle at center, #5e6ad2, transparent 62%);
+  animation: drift1 26s ease-in-out infinite alternate;
+}
+.glowfield::after {
+  width: 560px;
+  height: 560px;
+  right: -6%;
+  top: -18%;
+  background: radial-gradient(circle at center, #8b78ff, transparent 62%);
+  opacity: 0.4;
+  animation: drift2 32s ease-in-out infinite alternate;
+}
+@keyframes drift1 {
+  to {
+    transform: translate3d(60px, 40px, 0) scale(1.1);
+  }
+}
+@keyframes drift2 {
+  to {
+    transform: translate3d(-50px, 30px, 0) scale(1.08);
+  }
+}
+
+.accent-gradient-text {
+  background: linear-gradient(100deg, #f7f8f8 0%, #c6ccff 40%, #8b93f2 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+.glow-accent {
+  box-shadow: var(--glow-accent);
+}
+.hairline {
+  height: 1px;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    var(--color-line-strong),
+    transparent
+  );
+}
+
+/* subtle film grain overlay */
+.grain::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  opacity: 0.035;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+
+/* ---- Scrollbars ---- */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: #26282d transparent;
+}
+*::-webkit-scrollbar {
+  width: 9px;
+  height: 9px;
+}
+*::-webkit-scrollbar-thumb {
+  background: #26282d;
+  border-radius: 999px;
+  border: 2px solid transparent;
+  background-clip: content-box;
+}
+*::-webkit-scrollbar-thumb:hover {
+  background: #363940;
+  background-clip: content-box;
+}
+
+/* ---- Motion (restrained) ---- */
+@keyframes fade-in-up {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+.animate-in {
+  animation: fade-in-up 0.45s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+@keyframes rise {
+  from {
+    opacity: 0;
+    transform: translateY(18px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+.rise {
+  animation: rise 0.7s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+@keyframes shimmer {
+  100% {
+    transform: translateX(100%);
+  }
+}
+.shimmer::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  transform: translateX(-100%);
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(255, 255, 255, 0.06),
+    transparent
+  );
+  animation: shimmer 1.6s infinite;
+}
+
+/* flowing light travelling along a stroked line (Linear-style line rhythm) */
+@keyframes line-flow {
+  to {
+    stroke-dashoffset: -1000;
+  }
+}
+.line-flow {
+  animation: line-flow linear infinite;
+}
+@keyframes sway {
+  0%,
+  100% {
+    transform: translateY(-2%) scaleY(1);
+  }
+  50% {
+    transform: translateY(2%) scaleY(1.04);
+  }
+}
+.sway {
+  animation: sway 14s ease-in-out infinite;
+}
+
+/* gentle equalizer (used sparingly) */
+@keyframes eq {
+  0%,
+  100% {
+    transform: scaleY(0.4);
+  }
+  50% {
+    transform: scaleY(1);
+  }
+}
+.eq-bar {
+  transform-origin: bottom;
+  animation: eq 1.2s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+  }
+}

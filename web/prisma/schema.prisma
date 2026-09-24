@@ -1,0 +1,169 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+/// One demo workspace until real login and permissions exist.
+model Workspace {
+  id        String     @id
+  name      String
+  brand     Brand?
+  products  Product[]
+  campaigns Campaign[]
+}
+
+model Brand {
+  id          String    @id @default(cuid())
+  workspaceId String    @unique
+  workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  name        String
+  address     String
+  hours       String
+  style       String
+  audience    String
+  updatedAt   DateTime  @updatedAt
+}
+
+model Product {
+  id            String    @id @default(cuid())
+  workspaceId   String
+  workspace     Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  name          String
+  price         Float
+  originalPrice Float?
+  description   String
+  image         String?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  @@index([workspaceId])
+}
+
+/// Facts are copied onto the campaign at creation time.
+/// Later product edits must not rewrite this row.
+model Campaign {
+  id            String    @id @default(cuid())
+  workspaceId   String
+  workspace     Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  code          String    @unique
+  name          String
+  type          String
+  goal          String
+  status        String
+  productId     String?
+  productName   String
+  productDetail String
+  price         Float
+  originalPrice Float?
+  startDate     String
+  endDate       String
+  channels      Json
+  image         String?
+  contents      Json
+  metrics       Json?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  parentId      String?
+  parent        Campaign?  @relation("CampaignRounds", fields: [parentId], references: [id], onDelete: SetNull)
+  rounds        Campaign[] @relation("CampaignRounds")
+  generations   Generation[]
+  versions      ContentVersion[]
+  exports       ExportRecord[]
+  publications  Publication[]
+  metricEntries MetricEntry[]
+  reviews       ReviewNote[]
+
+  @@index([workspaceId])
+}
+
+model ExportRecord {
+  id         String   @id @default(cuid())
+  campaignId String
+  campaign   Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  channel    String
+  title      String
+  body       String
+  price      Float
+  createdAt  DateTime @default(now())
+
+  @@index([campaignId])
+}
+
+model Publication {
+  id          String   @id @default(cuid())
+  campaignId  String
+  campaign    Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  channel     String
+  publishedAt DateTime
+  link        String?
+  note        String?
+  createdAt   DateTime @default(now())
+
+  @@index([campaignId])
+}
+
+model MetricEntry {
+  id         String   @id @default(cuid())
+  campaignId String
+  campaign   Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  channel    String
+  metric     String
+  value      Float
+  observedOn String
+  window     String
+  source     String
+  demo       Boolean  @default(false)
+  dedupeKey  String   @unique
+  createdAt  DateTime @default(now())
+
+  @@index([campaignId])
+}
+
+model ReviewNote {
+  id           String   @id @default(cuid())
+  campaignId   String
+  campaign     Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  observation  String
+  limitation   String
+  suggestion   String
+  basis        String
+  createdAt    DateTime @default(now())
+
+  @@index([campaignId])
+}
+
+model Generation {
+  id            String   @id @default(cuid())
+  campaignId    String
+  campaign      Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  model         String
+  promptVersion String
+  inputSnapshot Json
+  output        Json?
+  status        String
+  error         String?
+  createdAt     DateTime @default(now())
+
+  @@index([campaignId])
+}
+
+model ContentVersion {
+  id           String   @id @default(cuid())
+  campaignId   String
+  campaign     Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  channel      String
+  title        String
+  body         String
+  tags         Json
+  cta          String
+  confirmed    Boolean  @default(false)
+  source       String
+  generationId String?
+  createdAt    DateTime @default(now())
+
+  @@index([campaignId, channel])
+}
