@@ -1,6 +1,6 @@
 # Markestra
 
-同事克隆后，在 `web` 目录执行：
+大家克隆后，在 `web` 目录执行：
 
 ```bash
 npm install
