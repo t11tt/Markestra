@@ -14,6 +14,7 @@ import {
   Textarea,
 } from "@/components/ui";
 import { useI18n } from "@/lib/i18n";
+import { isPhotoSrc } from "@/lib/image";
 
 const EMOJI = ["🍱", "☕", "🥮", "🍰", "🍜", "🍔", "🧋", "🎁"];
 
@@ -21,6 +22,7 @@ export default function ProductsPage() {
   const products = useStore((s) => s.products);
   const addProduct = useStore((s) => s.addProduct);
   const removeProduct = useStore((s) => s.removeProduct);
+  const setProductListed = useStore((s) => s.setProductListed);
   const { t } = useI18n();
 
   const [open, setOpen] = useState(false);
@@ -79,7 +81,7 @@ export default function ProductsPage() {
           {products.map((p) => (
             <Card key={p.id} className="group overflow-hidden">
               <div className="flex aspect-[16/10] items-center justify-center bg-gradient-to-br from-ink-800 to-ink-900 text-6xl">
-                {p.image?.startsWith("data:") ? (
+                {isPhotoSrc(p.image) ? (
                   // eslint-disable-next-line @next/next/no-img-element
                   <img src={p.image} alt="" className="h-full w-full object-cover" />
                 ) : (
@@ -97,11 +99,24 @@ export default function ProductsPage() {
                   </button>
                 </div>
                 <p className="mt-1 line-clamp-2 text-sm text-muted">{p.description}</p>
-                <div className="mt-3 flex items-baseline gap-2">
-                  <span className="text-lg font-bold text-brand-300">¥{p.price}</span>
-                  {p.originalPrice && (
-                    <span className="text-sm text-subtle line-through">¥{p.originalPrice}</span>
-                  )}
+                <div className="mt-3 flex items-center justify-between gap-2">
+                  <div className="flex items-baseline gap-2">
+                    <span className="text-lg font-bold text-brand-300">¥{p.price}</span>
+                    {p.originalPrice && (
+                      <span className="text-sm text-subtle line-through">¥{p.originalPrice}</span>
+                    )}
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => void setProductListed(p.id, !p.listed)}
+                    className={`rounded-lg px-2.5 py-1 text-xs font-medium ring-1 ring-inset ${
+                      p.listed
+                        ? "bg-ok/10 text-ok ring-ok/20"
+                        : "bg-ink-800 text-subtle ring-line"
+                    }`}
+                  >
+                    {p.listed ? t("prod.listed") : t("prod.unlisted")}
+                  </button>
                 </div>
               </div>
             </Card>

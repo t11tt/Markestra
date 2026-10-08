@@ -206,7 +206,7 @@ export function EmptyState({
 }
 
 export function CampaignGlyph({ image }: { image?: string }) {
-  if (image?.startsWith("data:")) {
+  if (image && (image.startsWith("data:") || image.startsWith("/api/files/") || image.startsWith("http"))) {
     // eslint-disable-next-line @next/next/no-img-element
     return <img src={image} alt="" className="h-full w-full object-cover" />;
   }

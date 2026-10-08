@@ -1,6 +1,8 @@
-import { PrismaClient } from "@prisma/client";
+import { Prisma, PrismaClient } from "@prisma/client";
 import { genAll } from "../src/lib/mockAI";
-import { DEMO_WORKSPACE_ID } from "../src/server/demo";
+import { hashPassword } from "../src/server/auth";
+import { DEMO_EMAIL, DEMO_PASSWORD, DEMO_SLUG, DEMO_WORKSPACE_ID } from "../src/server/demo";
+import { persistImage } from "../src/server/files";
 
 const prisma = new PrismaClient();
 const now = new Date("2026-09-23T00:00:00.000Z");
@@ -9,6 +11,10 @@ async function ensureDemoTrail() {
   const campaign = await prisma.campaign.findUnique({
     where: { id: "c_latte" },
     include: { publications: true },
+  });
+  await prisma.campaign.updateMany({
+    where: { id: "c_combo", endDate: "2026-10-08" },
+    data: { endDate: "2026-10-31" },
   });
   if (!campaign || campaign.publications.length > 0) return;
   const contents = Array.isArray(campaign.contents) ? campaign.contents : [];
@@ -64,10 +70,128 @@ async function ensureDemoTrail() {
   });
 }
 
+async function ensureContentVersions() {
+  const campaigns = await prisma.campaign.findMany({
+    include: { versions: true, exports: true, publications: true },
+  });
+  for (const campaign of campaigns) {
+    const contents = Array.isArray(campaign.contents) ? [...campaign.contents] : [];
+    let changed = false;
+    for (const item of contents) {
+      if (!item || typeof item !== "object") continue;
+      const row = item as {
+        channel?: string;
+        title?: string;
+        body?: string;
+        tags?: unknown;
+        cta?: string;
+        confirmed?: boolean;
+        versionId?: string;
+      };
+      if (typeof row.channel !== "string" || typeof row.title !== "string" || typeof row.body !== "string") {
+        continue;
+      }
+      if (row.versionId && campaign.versions.some((version) => version.id === row.versionId)) continue;
+      const tags = Array.isArray(row.tags) ? row.tags.filter((tag) => typeof tag === "string") : [];
+      const match = campaign.versions.find(
+        (version) => version.channel === row.channel && version.title === row.title && version.body === row.body
+      );
+      const version =
+        match ??
+        (await prisma.contentVersion.create({
+          data: {
+            campaignId: campaign.id,
+            channel: row.channel,
+            title: row.title,
+            body: row.body,
+            tags,
+            cta: typeof row.cta === "string" ? row.cta : "",
+            confirmed: row.confirmed === true,
+            source: "seed",
+          },
+        }));
+      if (version.confirmed !== (row.confirmed === true)) {
+        await prisma.contentVersion.update({
+          where: { id: version.id },
+          data: { confirmed: row.confirmed === true },
+        });
+      }
+      row.versionId = version.id;
+      changed = true;
+      campaign.versions.push(version);
+    }
+    if (changed) {
+      await prisma.campaign.update({
+        where: { id: campaign.id },
+        data: { contents: contents as unknown as Prisma.InputJsonValue },
+      });
+    }
+    for (const record of campaign.exports) {
+      if (record.versionId) continue;
+      const content = contents.find(
+        (item) => item && typeof item === "object" && (item as { channel?: string }).channel === record.channel
+      ) as { versionId?: string } | undefined;
+      if (!content?.versionId) continue;
+      await prisma.exportRecord.update({
+        where: { id: record.id },
+        data: { versionId: content.versionId },
+      });
+    }
+    for (const record of campaign.publications) {
+      if (record.versionId) continue;
+      const content = contents.find(
+        (item) => item && typeof item === "object" && (item as { channel?: string }).channel === record.channel
+      ) as { versionId?: string } | undefined;
+      if (!content?.versionId) continue;
+      await prisma.publication.update({
+        where: { id: record.id },
+        data: { versionId: content.versionId },
+      });
+    }
+  }
+}
+
+async function ensureDemoUser() {
+  const existing = await prisma.user.findUnique({ where: { email: DEMO_EMAIL } });
+  if (existing) return;
+  await prisma.user.create({
+    data: {
+      email: DEMO_EMAIL,
+      passwordHash: await hashPassword(DEMO_PASSWORD),
+      workspaceId: DEMO_WORKSPACE_ID,
+    },
+  });
+}
+
+async function moveDataUrlImages() {
+  const products = await prisma.product.findMany({ where: { image: { startsWith: "data:" } } });
+  for (const product of products) {
+    if (!product.image) continue;
+    await prisma.product.update({
+      where: { id: product.id },
+      data: { image: await persistImage(product.image) },
+    });
+  }
+  const campaigns = await prisma.campaign.findMany({ where: { image: { startsWith: "data:" } } });
+  for (const campaign of campaigns) {
+    if (!campaign.image) continue;
+    await prisma.campaign.update({
+      where: { id: campaign.id },
+      data: { image: await persistImage(campaign.image) },
+    });
+  }
+}
+
 async function main() {
   const existing = await prisma.workspace.findUnique({ where: { id: DEMO_WORKSPACE_ID } });
   if (existing) {
+    if (existing.slug !== DEMO_SLUG) {
+      await prisma.workspace.update({ where: { id: existing.id }, data: { slug: DEMO_SLUG } });
+    }
     await ensureDemoTrail();
+    await ensureContentVersions();
+    await ensureDemoUser();
+    await moveDataUrlImages();
     console.log("demo workspace already present, trail checked");
     return;
   }
@@ -83,6 +207,7 @@ async function main() {
   await prisma.workspace.create({
     data: {
       id: DEMO_WORKSPACE_ID,
+      slug: DEMO_SLUG,
       name: brand.name,
       brand: { create: brand },
       products: {
@@ -124,7 +249,7 @@ async function main() {
             price: 68,
             originalPrice: 88,
             startDate: "2026-09-24",
-            endDate: "2026-10-08",
+            endDate: "2026-10-31",
             channels: ["xiaohongshu", "moments"],
             image: "🍱",
             contents: genAll(["xiaohongshu", "moments"], {
@@ -135,7 +260,7 @@ async function main() {
               goal: "to_store",
               brandName: brand.name,
               address: brand.address,
-            }),
+            }) as unknown as Prisma.InputJsonValue,
             metrics: { views: 3240, saves: 186, inquiries: 12 },
             createdAt: new Date(now.getTime() - 86400000 * 2),
             updatedAt: new Date(now.getTime() - 3600000 * 5),
@@ -164,7 +289,7 @@ async function main() {
               goal: "orders",
               brandName: brand.name,
               address: brand.address,
-            }).map((content) => ({ ...content, confirmed: true })),
+            }).map((content) => ({ ...content, confirmed: true })) as unknown as Prisma.InputJsonValue,
             metrics: { views: 8120, saves: 542, inquiries: 47 },
             createdAt: new Date(now.getTime() - 86400000 * 8),
             updatedAt: new Date(now.getTime() - 86400000 * 3),
@@ -193,6 +318,9 @@ async function main() {
   });
 
   await ensureDemoTrail();
+  await ensureContentVersions();
+  await ensureDemoUser();
+  await moveDataUrlImages();
   console.log("seeded demo workspace");
 }
 

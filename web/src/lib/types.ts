@@ -52,7 +52,51 @@ export interface Product {
   price: number;
   originalPrice?: number;
   description: string;
-  image?: string; // dataURL or emoji
+  image?: string; // file URL or emoji
+  listed: boolean;
+}
+
+export interface ShopOffer {
+  name: string;
+  endDate: string;
+}
+
+export interface ShopProduct {
+  id: string;
+  name: string;
+  description: string;
+  image?: string;
+  price: number;
+  compareAt?: number;
+  offer?: ShopOffer;
+}
+
+export interface ShopCatalog {
+  brand: { name: string; address: string; hours: string };
+  products: ShopProduct[];
+}
+
+export type ShopFulfillment = "pickup" | "delivery";
+export type ShopOrderStatus = "placed" | "preparing" | "completed" | "cancelled";
+
+export interface ShopOrderItem {
+  name: string;
+  price: number;
+  qty: number;
+}
+
+export interface ShopOrder {
+  id: string;
+  code: string;
+  customerName: string;
+  phone: string;
+  fulfillment: ShopFulfillment;
+  address?: string;
+  note?: string;
+  status: ShopOrderStatus;
+  total: number;
+  createdAt: number;
+  items: ShopOrderItem[];
 }
 
 export interface ChannelContent {
@@ -62,6 +106,7 @@ export interface ChannelContent {
   tags: string[];
   cta: string;
   confirmed: boolean;
+  versionId?: string;
 }
 
 export interface Campaign {
@@ -79,6 +124,10 @@ export interface Campaign {
   endDate: string;
   channels: Channel[];
   image?: string;
+  images: string[];
+  category: string;
+  offer: string;
+  intent: string;
   contents: ChannelContent[];
   createdAt: number;
   updatedAt: number;

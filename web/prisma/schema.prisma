@@ -7,13 +7,35 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-/// One demo workspace until real login and permissions exist.
+/// A merchant account owns exactly one workspace.
 model Workspace {
-  id        String     @id
+  id        String      @id
+  slug      String      @unique
   name      String
+  user      User?
   brand     Brand?
   products  Product[]
   campaigns Campaign[]
+  orders    ShopOrder[]
+}
+
+model User {
+  id           String    @id @default(cuid())
+  email        String    @unique
+  passwordHash String
+  workspaceId  String    @unique
+  workspace    Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  sessions     Session[]
+  createdAt    DateTime  @default(now())
+}
+
+model Session {
+  id        String   @id @default(cuid())
+  tokenHash String   @unique
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  expiresAt DateTime
+  createdAt DateTime @default(now())
 }
 
 model Brand {
@@ -37,10 +59,42 @@ model Product {
   originalPrice Float?
   description   String
   image         String?
+  listed        Boolean   @default(true)
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
 
   @@index([workspaceId])
+}
+
+/// A customer order placed on the merchant's own storefront.
+model ShopOrder {
+  id            String          @id @default(cuid())
+  workspaceId   String
+  workspace     Workspace       @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  code          String          @unique
+  customerName  String
+  phone         String
+  fulfillment   String
+  address       String?
+  note          String?
+  status        String
+  total         Float
+  createdAt     DateTime        @default(now())
+  items         ShopOrderItem[]
+
+  @@index([workspaceId])
+}
+
+model ShopOrderItem {
+  id        String    @id @default(cuid())
+  orderId   String
+  order     ShopOrder @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  productId String?
+  name      String
+  price     Float
+  qty       Int
+
+  @@index([orderId])
 }
 
 /// Facts are copied onto the campaign at creation time.
@@ -63,6 +117,10 @@ model Campaign {
   endDate       String
   channels      Json
   image         String?
+  images        Json      @default("[]")
+  category      String    @default("")
+  offer         String    @default("")
+  intent        String    @default("")
   contents      Json
   metrics       Json?
   createdAt     DateTime  @default(now())
@@ -81,27 +139,32 @@ model Campaign {
 }
 
 model ExportRecord {
-  id         String   @id @default(cuid())
+  id         String          @id @default(cuid())
   campaignId String
-  campaign   Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  campaign   Campaign        @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  versionId  String?
+  version    ContentVersion? @relation(fields: [versionId], references: [id], onDelete: SetNull)
   channel    String
   title      String
   body       String
   price      Float
-  createdAt  DateTime @default(now())
+  posterFile String?
+  createdAt  DateTime        @default(now())
 
   @@index([campaignId])
 }
 
 model Publication {
-  id          String   @id @default(cuid())
+  id          String          @id @default(cuid())
   campaignId  String
-  campaign    Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  campaign    Campaign        @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  versionId   String?
+  version     ContentVersion? @relation(fields: [versionId], references: [id], onDelete: SetNull)
   channel     String
   publishedAt DateTime
   link        String?
   note        String?
-  createdAt   DateTime @default(now())
+  createdAt   DateTime        @default(now())
 
   @@index([campaignId])
 }
@@ -160,10 +223,12 @@ model ContentVersion {
   body         String
   tags         Json
   cta          String
-  confirmed    Boolean  @default(false)
+  confirmed    Boolean        @default(false)
   source       String
   generationId String?
-  createdAt    DateTime @default(now())
+  createdAt    DateTime       @default(now())
+  exports      ExportRecord[]
+  publications Publication[]
 
   @@index([campaignId, channel])
 }

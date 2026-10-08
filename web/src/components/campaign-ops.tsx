@@ -9,8 +9,23 @@ import type { Channel } from "@/lib/types";
 
 interface OpsData {
   parent: { id: string; code: string; name: string } | null;
-  exports: { id: string; channel: string; title: string; price: number; createdAt: number }[];
-  publications: { id: string; channel: string; publishedAt: string; link: string | null; note: string | null }[];
+  exports: {
+    id: string;
+    channel: string;
+    title: string;
+    price: number;
+    versionId: string | null;
+    posterFile: string | null;
+    createdAt: number;
+  }[];
+  publications: {
+    id: string;
+    channel: string;
+    publishedAt: string;
+    link: string | null;
+    note: string | null;
+    versionId: string | null;
+  }[];
   metrics: {
     id: string;
     channel: string;
@@ -109,6 +124,19 @@ export function CampaignOps({
             ops.exports.map((row) => (
               <li key={row.id}>
                 {t(`channel.${row.channel}`)} · ¥{row.price} · {row.title}
+                {row.versionId ? (
+                  <span className="mt-0.5 block font-mono text-xs text-subtle">
+                    {t("ops.version", { id: row.versionId.slice(-6) })}
+                    {row.posterFile ? (
+                      <>
+                        {" · "}
+                        <a className="text-brand-300" href={`/api/files/${row.posterFile}`} target="_blank" rel="noreferrer">
+                          PNG
+                        </a>
+                      </>
+                    ) : null}
+                  </span>
+                ) : null}
               </li>
             ))
           ) : (
@@ -169,6 +197,7 @@ export function CampaignOps({
           {ops?.publications.map((row) => (
             <li key={row.id}>
               {t(`channel.${row.channel}`)} · {row.publishedAt.slice(0, 16).replace("T", " ")}
+              {row.versionId ? ` · ${t("ops.version", { id: row.versionId.slice(-6) })}` : ""}
               {row.link ? ` · ${row.link}` : ""}
             </li>
           ))}

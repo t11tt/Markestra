@@ -2,7 +2,6 @@ import { Prisma } from "@prisma/client";
 import { genChannelContent } from "@/lib/mockAI";
 import type { Channel, ChannelContent } from "@/lib/types";
 import { prisma } from "./db";
-import { DEMO_WORKSPACE_ID } from "./demo";
 import { isChannel, mapCampaign } from "./map";
 
 export const PROMPT_VERSION = "content-v1";
@@ -58,6 +57,7 @@ function parseContents(value: unknown): ChannelContent[] | null {
       tags: Array.isArray(row.tags) ? row.tags.filter((tag) => typeof tag === "string") : [],
       cta: row.cta.trim(),
       confirmed: Boolean(row.confirmed),
+      versionId: typeof row.versionId === "string" ? row.versionId : undefined,
     });
   }
   return parsed;
@@ -193,14 +193,14 @@ function mockContents(snapshot: Snapshot, channels: Channel[], seed: number): un
   };
 }
 
-async function loadCampaign(id: string) {
+async function loadCampaign(id: string, workspaceId: string) {
   return prisma.campaign.findFirst({
-    where: { id, workspaceId: DEMO_WORKSPACE_ID },
+    where: { id, workspaceId },
     include: { workspace: { include: { brand: true } } },
   });
 }
 
-async function finishFromLatest(campaignId: string) {
+async function finishFromLatest(campaignId: string, workspaceId: string) {
   for (let attempt = 0; attempt < 40; attempt++) {
     const running = await prisma.generation.findFirst({
       where: { campaignId, status: "running" },
@@ -213,13 +213,12 @@ async function finishFromLatest(campaignId: string) {
     orderBy: { createdAt: "desc" },
   });
   const campaign = await prisma.campaign.findFirst({
-    where: { id: campaignId, workspaceId: DEMO_WORKSPACE_ID },
+    where: { id: campaignId, workspaceId },
   });
   if (!campaign) throw new Error("找不到这个活动");
   if (latest?.status === "failed") throw new Error(latest.error || "生成失败");
-  const warnings = Array.isArray((latest?.output as { warnings?: unknown } | null)?.warnings)
-    ? ((latest?.output as { warnings: FactWarning[] }).warnings ?? [])
-    : [];
+  const output = latest?.output as unknown as { warnings?: FactWarning[] } | null;
+  const warnings = Array.isArray(output?.warnings) ? output.warnings : [];
   return {
     campaign: mapCampaign(campaign),
     warnings,
@@ -228,7 +227,7 @@ async function finishFromLatest(campaignId: string) {
   };
 }
 
-export async function generateCampaign(campaignId: string, onlyChannel?: Channel) {
+export async function generateCampaign(campaignId: string, workspaceId: string, onlyChannel?: Channel) {
   await prisma.generation.updateMany({
     where: {
       campaignId,
@@ -238,7 +237,7 @@ export async function generateCampaign(campaignId: string, onlyChannel?: Channel
     data: { status: "failed", error: "生成超时" },
   });
 
-  const campaign = await loadCampaign(campaignId);
+  const campaign = await loadCampaign(campaignId, workspaceId);
   if (!campaign?.workspace.brand) throw new Error("找不到这个活动");
 
   const requested = (Array.isArray(campaign.channels) ? campaign.channels : []).filter(isChannel);
@@ -271,12 +270,12 @@ export async function generateCampaign(campaignId: string, onlyChannel?: Channel
         campaignId,
         model: modelName,
         promptVersion: PROMPT_VERSION,
-        inputSnapshot: snapshot,
+        inputSnapshot: snapshot as unknown as Prisma.InputJsonValue,
         status: "running",
       },
     });
   } catch (error) {
-    if (isUnique(error)) return finishFromLatest(campaignId);
+    if (isUnique(error)) return finishFromLatest(campaignId, workspaceId);
     throw error;
   }
 
@@ -300,32 +299,46 @@ export async function generateCampaign(campaignId: string, onlyChannel?: Channel
         ].sort((a, b) => channelsIndex(a.channel) - channelsIndex(b.channel))
       : generated;
 
-    await prisma.$transaction([
-      prisma.contentVersion.createMany({
-        data: generated.map((content) => ({
-          campaignId,
-          channel: content.channel,
-          title: content.title,
-          body: content.body,
-          tags: content.tags,
-          cta: content.cta,
-          confirmed: false,
-          source: "generation",
-          generationId: generation.id,
-        })),
-      }),
-      prisma.campaign.update({
+    await prisma.$transaction(async (tx) => {
+      const rows: { id: string; channel: string }[] = [];
+      for (const content of generated) {
+        rows.push(
+          await tx.contentVersion.create({
+            data: {
+              campaignId,
+              channel: content.channel,
+              title: content.title,
+              body: content.body,
+              tags: content.tags,
+              cta: content.cta,
+              confirmed: false,
+              source: "generation",
+              generationId: generation.id,
+            },
+          })
+        );
+      }
+      const stamped = merged.map((content) => {
+        if (!channels.includes(content.channel)) return content;
+        const version = rows.find((row) => row.channel === content.channel);
+        return version ? { ...content, versionId: version.id, confirmed: false } : content;
+      });
+      await tx.campaign.update({
         where: { id: campaignId },
-        data: { contents: merged, status: "review" },
-      }),
-      prisma.generation.update({
+        data: { contents: stamped as unknown as Prisma.InputJsonValue, status: "review" },
+      });
+      await tx.generation.update({
         where: { id: generation.id },
         data: {
           status: "succeeded",
-          output: { plan: (raw as { plan?: unknown })?.plan ?? null, contents: generated, warnings },
+          output: {
+            plan: (raw as { plan?: unknown })?.plan ?? null,
+            contents: generated,
+            warnings,
+          } as unknown as Prisma.InputJsonValue,
         },
-      }),
-    ]);
+      });
+    });
 
     const saved = await prisma.campaign.findUniqueOrThrow({ where: { id: campaignId } });
     return {
@@ -356,9 +369,9 @@ function currentStatusAfterFailure(contents: unknown) {
   return Array.isArray(contents) && contents.length > 0 ? "review" : "draft";
 }
 
-export async function listVersions(campaignId: string, channel?: Channel) {
+export async function listVersions(campaignId: string, workspaceId: string, channel?: Channel) {
   const campaign = await prisma.campaign.findFirst({
-    where: { id: campaignId, workspaceId: DEMO_WORKSPACE_ID },
+    where: { id: campaignId, workspaceId },
     select: { id: true },
   });
   if (!campaign) return null;
@@ -380,9 +393,9 @@ export async function listVersions(campaignId: string, channel?: Channel) {
   }));
 }
 
-export async function restoreVersion(campaignId: string, versionId: string) {
+export async function restoreVersion(campaignId: string, workspaceId: string, versionId: string) {
   const version = await prisma.contentVersion.findFirst({
-    where: { id: versionId, campaignId, campaign: { workspaceId: DEMO_WORKSPACE_ID } },
+    where: { id: versionId, campaignId, campaign: { workspaceId } },
   });
   if (!version || !isChannel(version.channel)) return null;
   const campaign = await prisma.campaign.findUniqueOrThrow({ where: { id: campaignId } });
@@ -394,13 +407,14 @@ export async function restoreVersion(campaignId: string, versionId: string) {
     tags: Array.isArray(version.tags) ? version.tags.filter((tag) => typeof tag === "string") : [],
     cta: version.cta,
     confirmed: false,
+    versionId: version.id,
   };
   const contents = current.some((item) => item.channel === version.channel)
     ? current.map((item) => (item.channel === version.channel ? restored : item))
     : [...current, restored];
   const saved = await prisma.campaign.update({
     where: { id: campaignId },
-    data: { contents, status: "review" },
+    data: { contents: contents as unknown as Prisma.InputJsonValue, status: "review" },
   });
   return mapCampaign(saved);
 }

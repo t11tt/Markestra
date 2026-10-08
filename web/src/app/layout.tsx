@@ -3,9 +3,9 @@ import "./globals.css";
 import { LocaleProvider } from "@/lib/i18n";
 
 export const metadata: Metadata = {
-  title: "Markestra · 让营销像交响乐一样有条不紊",
+  title: "Markestra · 商家自己的网店",
   description:
-    "Markestra（market + orchestra）是面向国内商家的 AI 营销工作台：创建活动、生成多渠道内容、导出素材并复盘，像指挥一场交响乐。",
+    "Markestra 帮商家上架商品、接待订单，并用同一套资料做渠道宣传。活动价会回到网店。",
 };
 
 export const viewport = {

@@ -35,9 +35,16 @@ export function PosterCanvas({
     if (!ctx) return;
     const current = JSON.parse(inputKey) as PosterInput;
     let cancelled = false;
-    loadPosterPhoto(current.image).then((photo) => {
+    const sources = current.images?.length ? current.images : current.image ? [current.image] : [];
+    Promise.all(sources.map((src) => loadPosterPhoto(src))).then((loaded) => {
       if (cancelled) return;
-      onDrawRef.current(renderPoster(ctx, current, photo));
+      onDrawRef.current(
+        renderPoster(
+          ctx,
+          current,
+          loaded.filter((photo): photo is HTMLImageElement => Boolean(photo))
+        )
+      );
     });
     return () => {
       cancelled = true;

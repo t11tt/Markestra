@@ -8,10 +8,6 @@ import {
   Check,
   Copy,
   Download,
-  Heart,
-  MessageCircle,
-  Star,
-  Share2,
   Package2,
   CheckCircle2,
 } from "lucide-react";
@@ -30,6 +26,8 @@ import {
 import { useI18n } from "@/lib/i18n";
 import { Campaign, CampaignType, Channel, CHANNELS, CAMPAIGN_TYPES, ChannelContent, STATUS_META } from "@/lib/types";
 import { PosterCanvas, PosterHandle } from "@/components/poster-canvas";
+import { isPhotoSrc } from "@/lib/image";
+import { capturePosterPng } from "@/lib/poster";
 import { CampaignOps } from "@/components/campaign-ops";
 
 function useToast() {
@@ -47,7 +45,7 @@ function useToast() {
 }
 
 function XhsPreview({ c, content, brand }: { c: Campaign; content: ChannelContent; brand: string }) {
-  const isImg = c.image?.startsWith("data:");
+  const isImg = isPhotoSrc(c.image);
   return (
     <div className="mx-auto w-full max-w-[340px] overflow-hidden rounded-3xl bg-white shadow-lg">
       <div className="flex aspect-[3/4] items-center justify-center bg-gradient-to-br from-rose-50 to-amber-50 text-8xl">
@@ -68,15 +66,9 @@ function XhsPreview({ c, content, brand }: { c: Campaign; content: ChannelConten
             <span key={t} className="text-[13px] font-medium text-sky-600">#{t}</span>
           ))}
         </div>
-        <div className="mt-3 flex items-center justify-between border-t border-slate-100 pt-3">
-          <div className="flex items-center gap-2">
-            <div className="h-6 w-6 rounded-full bg-gradient-to-br from-rose-400 to-rose-600" />
-            <span className="text-xs text-slate-500">{brand}</span>
-          </div>
-          <div className="flex items-center gap-3 text-slate-400">
-            <span className="flex items-center gap-0.5 text-xs"><Heart size={14} /> 286</span>
-            <span className="flex items-center gap-0.5 text-xs"><Star size={14} /> 143</span>
-          </div>
+        <div className="mt-3 flex items-center gap-2 border-t border-slate-100 pt-3">
+          <div className="h-6 w-6 rounded-full bg-gradient-to-br from-rose-400 to-rose-600" />
+          <span className="text-xs text-slate-500">{brand}</span>
         </div>
       </div>
     </div>
@@ -84,7 +76,7 @@ function XhsPreview({ c, content, brand }: { c: Campaign; content: ChannelConten
 }
 
 function MomentsPreview({ c, content, brand }: { c: Campaign; content: ChannelContent; brand: string }) {
-  const isImg = c.image?.startsWith("data:");
+  const isImg = isPhotoSrc(c.image);
   return (
     <div className="mx-auto w-full max-w-[360px] rounded-2xl bg-white p-4 shadow-lg">
       <div className="flex gap-3">
@@ -106,10 +98,6 @@ function MomentsPreview({ c, content, brand }: { c: Campaign; content: ChannelCo
               )}
             </div>
           </div>
-          <div className="mt-2 flex items-center justify-between">
-            <span className="text-xs text-slate-400">刚刚 · 杭州</span>
-            <MessageCircle size={16} className="text-[#576b95]" />
-          </div>
         </div>
       </div>
     </div>
@@ -117,7 +105,7 @@ function MomentsPreview({ c, content, brand }: { c: Campaign; content: ChannelCo
 }
 
 function DouyinPreview({ c, content, brand }: { c: Campaign; content: ChannelContent; brand: string }) {
-  const isImg = c.image?.startsWith("data:");
+  const isImg = isPhotoSrc(c.image);
   return (
     <div className="relative mx-auto aspect-[9/16] w-full max-w-[300px] overflow-hidden rounded-3xl bg-slate-900 text-white shadow-lg">
       <div className="absolute inset-0 flex items-center justify-center text-8xl opacity-90">
@@ -138,11 +126,6 @@ function DouyinPreview({ c, content, brand }: { c: Campaign; content: ChannelCon
             <span key={t} className="text-xs text-white/80">#{t}</span>
           ))}
         </div>
-      </div>
-      <div className="absolute bottom-16 right-3 flex flex-col items-center gap-4">
-        <div className="flex flex-col items-center"><Heart size={26} className="fill-white" /><span className="text-[10px]">1.2w</span></div>
-        <div className="flex flex-col items-center"><MessageCircle size={26} /><span className="text-[10px]">328</span></div>
-        <Share2 size={26} />
       </div>
     </div>
   );
@@ -307,12 +290,34 @@ function WorkbenchInner() {
 
   const downloadPoster = async () => {
     if (!allConfirmed) return;
+    const confirmed = campaign.contents.filter((item) => item.confirmed);
+    const items = await Promise.all(
+      confirmed.map(async (item) => ({
+        channel: item.channel,
+        png: await capturePosterPng({
+          layout: posterLayout,
+          label: t(`type.${posterLayout}`),
+          title: item.title || campaign.productName,
+          detail: campaign.productDetail,
+          price: campaign.price,
+          originalPrice: campaign.originalPrice,
+          startDate: campaign.startDate,
+          endDate: campaign.endDate,
+          brand: brand.name,
+          image: campaign.image,
+          images: campaign.images,
+          category: campaign.category,
+          offer: campaign.offer,
+          intent: campaign.intent,
+        }),
+      }))
+    );
     const res = await fetch(`/api/campaigns/${campaign.id}/ops`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         action: "export",
-        items: campaign.contents.filter((item) => item.confirmed).map((item) => ({ channel: item.channel })),
+        items,
       }),
     });
     const data = await res.json().catch(() => ({}));
@@ -365,16 +370,50 @@ function WorkbenchInner() {
             </div>
             <div className="grid grid-cols-2 gap-x-6 gap-y-3 text-sm sm:grid-cols-3">
               <Fact label={t("wb.target")} value={campaign.productName} />
-              <Fact
-                label={t("wb.price")}
-                value={`¥${campaign.price}${
-                  campaign.originalPrice ? `（${t("wb.original", { price: "¥" + campaign.originalPrice })}）` : ""
-                }`}
-              />
               <Fact label={t("wb.goal")} value={t(`goal.${campaign.goal}`)} />
+              <Field label={t("wb.price")}>
+                <Input
+                  type="number"
+                  value={String(campaign.price)}
+                  onChange={(e) => {
+                    const price = Number(e.target.value);
+                    if (!Number.isFinite(price) || price < 0 || price === campaign.price) return;
+                    updateCampaign(campaign.id, { price });
+                  }}
+                />
+              </Field>
+              <Field label={t("wb.start")}>
+                <Input
+                  type="date"
+                  value={campaign.startDate}
+                  onChange={(e) => {
+                    if (!e.target.value || e.target.value === campaign.startDate) return;
+                    updateCampaign(campaign.id, { startDate: e.target.value });
+                  }}
+                />
+              </Field>
+              <Field label={t("wb.end")}>
+                <Input
+                  type="date"
+                  value={campaign.endDate}
+                  onChange={(e) => {
+                    if (!e.target.value || e.target.value === campaign.endDate) return;
+                    updateCampaign(campaign.id, { endDate: e.target.value });
+                  }}
+                />
+              </Field>
               <div className="col-span-2 sm:col-span-3">
                 <Fact label={t("wb.content")} value={campaign.productDetail} />
               </div>
+              {campaign.category && (
+                <Fact label={t("wiz.category")} value={campaign.category} />
+              )}
+              {campaign.offer && <Fact label={t("wiz.offer")} value={campaign.offer} />}
+              {campaign.intent && (
+                <div className="col-span-2 sm:col-span-3">
+                  <Fact label={t("wiz.intent")} value={campaign.intent} />
+                </div>
+              )}
             </div>
           </Card>
 
@@ -508,7 +547,10 @@ function WorkbenchInner() {
                       {t("wb.copy")}
                     </Button>
                     {activeContent.confirmed ? (
-                      <Badge tone="green" dot>{t("wb.confirmed")}</Badge>
+                      <Badge tone="green" dot>
+                        {t("wb.confirmed")}
+                        {activeContent.versionId ? ` · ${activeContent.versionId.slice(-6)}` : ""}
+                      </Badge>
                     ) : (
                       <Button
                         size="sm"
@@ -575,6 +617,10 @@ function WorkbenchInner() {
                 endDate: campaign.endDate,
                 brand: brand.name,
                 image: campaign.image,
+                images: campaign.images,
+                category: campaign.category,
+                offer: campaign.offer,
+                intent: campaign.intent,
               }}
             />
             {posterCut && <p className="mt-2 text-xs text-warn">{t("wb.posterCut")}</p>}

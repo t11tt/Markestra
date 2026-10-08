@@ -1,4 +1,5 @@
 import type { Brand, Campaign, Product } from "@prisma/client";
+import { displayImage } from "@/lib/image";
 import type {
   Brand as BrandDto,
   Campaign as CampaignDto,
@@ -32,8 +33,16 @@ export function mapProduct(row: Product): ProductDto {
     price: row.price,
     originalPrice: row.originalPrice ?? undefined,
     description: row.description,
-    image: row.image ?? undefined,
+    image: displayImage(row.image),
+    listed: row.listed,
   };
+}
+
+function asImages(value: unknown) {
+  if (!Array.isArray(value)) return [];
+  return value
+    .filter((item): item is string => typeof item === "string" && item.length > 0)
+    .map((item) => displayImage(item) ?? item);
 }
 
 function asChannels(value: unknown): ChannelId[] {
@@ -56,6 +65,7 @@ function asContents(value: unknown): ContentDto[] {
         tags: Array.isArray(row.tags) ? row.tags.filter((t) => typeof t === "string") : [],
         cta: typeof row.cta === "string" ? row.cta : "",
         confirmed: Boolean(row.confirmed),
+        versionId: typeof row.versionId === "string" ? row.versionId : undefined,
       },
     ];
   });
@@ -88,7 +98,11 @@ export function mapCampaign(row: Campaign): CampaignDto {
     startDate: row.startDate,
     endDate: row.endDate,
     channels: asChannels(row.channels),
-    image: row.image ?? undefined,
+    image: displayImage(row.image),
+    images: asImages(row.images),
+    category: row.category,
+    offer: row.offer,
+    intent: row.intent,
     contents: asContents(row.contents),
     createdAt: row.createdAt.getTime(),
     updatedAt: row.updatedAt.getTime(),

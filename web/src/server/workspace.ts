@@ -1,15 +1,15 @@
 import { prisma } from "./db";
-import { DEMO_WORKSPACE_ID } from "./demo";
 import { mapBrand, mapCampaign, mapProduct } from "./map";
 import type { Brand, Campaign, Product } from "@/lib/types";
 
-export async function readWorkspace(): Promise<{
+export async function readWorkspace(workspaceId: string): Promise<{
   brand: Brand;
   products: Product[];
   campaigns: Campaign[];
+  shopSlug: string;
 }> {
   const workspace = await prisma.workspace.findUnique({
-    where: { id: DEMO_WORKSPACE_ID },
+    where: { id: workspaceId },
     include: {
       brand: true,
       products: { orderBy: { createdAt: "desc" } },
@@ -23,5 +23,6 @@ export async function readWorkspace(): Promise<{
     brand: mapBrand(workspace.brand),
     products: workspace.products.map(mapProduct),
     campaigns: workspace.campaigns.map(mapCampaign),
+    shopSlug: workspace.slug,
   };
 }

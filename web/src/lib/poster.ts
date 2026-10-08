@@ -14,7 +14,13 @@ export interface PosterInput {
   endDate: string;
   brand: string;
   image?: string;
+  images?: string[];
+  category?: string;
+  offer?: string;
+  intent?: string;
 }
+
+type PosterPhoto = CanvasImageSource & { width: number; height: number };
 
 export interface PosterDraw {
   titleTruncated: boolean;
@@ -106,6 +112,51 @@ function drawMark(
   ctx.restore();
 }
 
+function drawCollage(
+  ctx: CanvasRenderingContext2D,
+  fallback: string | undefined,
+  photos: PosterPhoto[],
+  x: number,
+  y: number,
+  w: number,
+  h: number
+) {
+  const frames = photos.slice(0, 4);
+  if (frames.length === 0) {
+    drawMark(ctx, fallback, null, x, y, w, h);
+    return;
+  }
+  const gap = 10;
+  const boxes =
+    frames.length === 1
+      ? [{ x, y, w, h }]
+      : frames.length === 2
+        ? [
+            { x, y, w: (w - gap) / 2, h },
+            { x: x + (w + gap) / 2, y, w: (w - gap) / 2, h },
+          ]
+        : frames.length === 3
+          ? [
+              { x, y, w: w * 0.62, h },
+              { x: x + w * 0.64, y, w: w * 0.36, h: (h - gap) / 2 },
+              { x: x + w * 0.64, y: y + (h + gap) / 2, w: w * 0.36, h: (h - gap) / 2 },
+            ]
+          : [
+              { x, y, w: (w - gap) / 2, h: (h - gap) / 2 },
+              { x: x + (w + gap) / 2, y, w: (w - gap) / 2, h: (h - gap) / 2 },
+              { x, y: y + (h + gap) / 2, w: (w - gap) / 2, h: (h - gap) / 2 },
+              { x: x + (w + gap) / 2, y: y + (h + gap) / 2, w: (w - gap) / 2, h: (h - gap) / 2 },
+            ];
+  frames.forEach((photo, index) => {
+    const box = boxes[index];
+    drawMark(ctx, fallback, photo, box.x, box.y, box.w, box.h);
+  });
+}
+
+function briefLine(input: PosterInput) {
+  return [input.category, input.offer, input.intent].filter(Boolean).join("  ·  ");
+}
+
 function paintLines(
   ctx: CanvasRenderingContext2D,
   lines: string[],
@@ -123,26 +174,27 @@ function paintLines(
 export function renderPoster(
   ctx: CanvasRenderingContext2D,
   input: PosterInput,
-  photo: (CanvasImageSource & { width: number; height: number }) | null
+  photos: PosterPhoto | PosterPhoto[] | null
 ): PosterDraw {
   const price = money(input.price);
   const dates = `${input.startDate} → ${input.endDate}`;
+  const frames = Array.isArray(photos) ? photos.filter(Boolean) : photos ? [photos] : [];
   ctx.clearRect(0, 0, POSTER_W, POSTER_H);
-  if (input.layout === "combo") return drawCombo(ctx, input, photo, price, dates);
-  if (input.layout === "festival") return drawFestival(ctx, input, photo, price, dates);
-  return drawNewProduct(ctx, input, photo, price, dates);
+  if (input.layout === "combo") return drawCombo(ctx, input, frames, price, dates);
+  if (input.layout === "festival") return drawFestival(ctx, input, frames, price, dates);
+  return drawNewProduct(ctx, input, frames, price, dates);
 }
 
 function drawNewProduct(
   ctx: CanvasRenderingContext2D,
   input: PosterInput,
-  photo: (CanvasImageSource & { width: number; height: number }) | null,
+  photos: PosterPhoto[],
   price: string,
   dates: string
 ): PosterDraw {
   ctx.fillStyle = "#0c0b12";
   ctx.fillRect(0, 0, POSTER_W, POSTER_H);
-  drawMark(ctx, input.image, photo, 0, 0, POSTER_W, 760);
+  drawCollage(ctx, input.image, photos, 0, 0, POSTER_W, 760);
   const fade = ctx.createLinearGradient(0, 560, 0, 760);
   fade.addColorStop(0, "rgba(12,11,18,0)");
   fade.addColorStop(1, "#0c0b12");
@@ -160,7 +212,7 @@ function drawNewProduct(
   paintLines(ctx, title.lines, 72, 880, 78, "#f7f4ee");
 
   ctx.font = `34px ${FONT}`;
-  const detail = wrapText(ctx, input.detail, 936, 3);
+  const detail = wrapText(ctx, [input.detail, briefLine(input)].filter(Boolean).join(" · "), 936, 3);
   paintLines(ctx, detail.lines, 72, 1060, 48, "#b7b3c7");
 
   ctx.font = `bold 108px ${FONT}`;
@@ -175,13 +227,13 @@ function drawNewProduct(
 function drawCombo(
   ctx: CanvasRenderingContext2D,
   input: PosterInput,
-  photo: (CanvasImageSource & { width: number; height: number }) | null,
+  photos: PosterPhoto[],
   price: string,
   dates: string
 ): PosterDraw {
   ctx.fillStyle = "#100e18";
   ctx.fillRect(0, 0, POSTER_W, POSTER_H);
-  drawMark(ctx, input.image, photo, 0, 0, 620, POSTER_H);
+  drawCollage(ctx, input.image, photos, 0, 0, 620, POSTER_H);
   ctx.fillStyle = "#17151f";
   ctx.fillRect(620, 0, 460, POSTER_H);
 
@@ -216,7 +268,7 @@ function drawCombo(
   cursor += 20 + title.lines.length * 58 + 28;
 
   ctx.font = `30px ${FONT}`;
-  const detail = wrapText(ctx, input.detail, 360, 5);
+  const detail = wrapText(ctx, [input.detail, briefLine(input)].filter(Boolean).join(" · "), 360, 5);
   paintLines(ctx, detail.lines, 668, cursor, 42, "#b7b3c7");
 
   ctx.font = `26px ${FONT}`;
@@ -229,7 +281,7 @@ function drawCombo(
 function drawFestival(
   ctx: CanvasRenderingContext2D,
   input: PosterInput,
-  photo: (CanvasImageSource & { width: number; height: number }) | null,
+  photos: PosterPhoto[],
   price: string,
   dates: string
 ): PosterDraw {
@@ -253,14 +305,14 @@ function drawFestival(
   ctx.textBaseline = "top";
   ctx.fillText(input.label, 80, 196);
 
-  drawMark(ctx, input.image, photo, 80, 270, 920, 620);
+  drawCollage(ctx, input.image, photos, 80, 270, 920, 620);
 
   ctx.font = `bold 58px ${FONT}`;
   const title = wrapText(ctx, input.title, 920, 2);
   paintLines(ctx, title.lines, 80, 930, 72, "#f7f4ee");
 
   ctx.font = `32px ${FONT}`;
-  const detail = wrapText(ctx, input.detail, 920, 2);
+  const detail = wrapText(ctx, [input.detail, briefLine(input)].filter(Boolean).join(" · "), 920, 2);
   paintLines(ctx, detail.lines, 80, 1090, 46, "#b7b3c7");
 
   ctx.font = `bold 96px ${FONT}`;
@@ -272,8 +324,24 @@ function drawFestival(
   return { titleTruncated: title.truncated, detailTruncated: detail.truncated };
 }
 
+export async function capturePosterPng(input: PosterInput) {
+  const canvas = document.createElement("canvas");
+  canvas.width = POSTER_W;
+  canvas.height = POSTER_H;
+  const ctx = canvas.getContext("2d");
+  if (!ctx) return "";
+  const sources = input.images?.length ? input.images : input.image ? [input.image] : [];
+  const photos = (await Promise.all(sources.map((src) => loadPosterPhoto(src)))).filter(
+    (photo): photo is HTMLImageElement => Boolean(photo)
+  );
+  renderPoster(ctx, input, photos);
+  return canvas.toDataURL("image/png");
+}
+
 export function loadPosterPhoto(src?: string) {
-  if (!src || !src.startsWith("data:")) return Promise.resolve(null);
+  if (!src || !(src.startsWith("data:") || src.startsWith("/api/files/") || src.startsWith("http"))) {
+    return Promise.resolve(null);
+  }
   return new Promise<HTMLImageElement | null>((resolve) => {
     const img = new Image();
     img.onload = () => resolve(img);

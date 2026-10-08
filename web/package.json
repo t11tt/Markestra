@@ -8,6 +8,7 @@
     "start": "next start",
     "lint": "eslint",
     "db:seed": "tsx prisma/seed.ts",
+    "test": "tsx --test src/server/metrics.test.ts src/server/drafts.test.ts",
     "postinstall": "prisma generate"
   },
   "prisma": {

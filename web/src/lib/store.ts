@@ -24,6 +24,9 @@ async function api<T>(url: string, init?: RequestInit): Promise<T> {
     },
   });
   const body = (await res.json().catch(() => ({}))) as { error?: string };
+  if (res.status === 401 && typeof window !== "undefined") {
+    window.location.assign("/login");
+  }
   if (!res.ok) throw new Error(body.error || "请求失败");
   return body as T;
 }
@@ -33,11 +36,19 @@ async function flushCampaign(id: string) {
   if (!patch) return;
   pendingCampaigns.delete(id);
   try {
-    await api(`/api/campaigns/${id}`, {
+    const saved = await api<Campaign>(`/api/campaigns/${id}`, {
       method: "PATCH",
       body: JSON.stringify(patch),
     });
-    useStore.setState({ error: null });
+    useStore.setState((state) => ({
+      error: null,
+      campaigns: state.campaigns.map((campaign) => {
+        if (campaign.id !== id) return campaign;
+        const pending = pendingCampaigns.get(id);
+        if (pending?.contents) return { ...saved, contents: campaign.contents };
+        return saved;
+      }),
+    }));
   } catch (error) {
     useStore.setState({
       error: error instanceof Error ? error.message : "保存活动失败",
@@ -49,7 +60,16 @@ function queueCampaignSave(id: string, patch: CampaignPatch) {
   pendingCampaigns.set(id, { ...pendingCampaigns.get(id), ...patch });
   const existing = campaignTimers.get(id);
   if (existing) clearTimeout(existing);
-  const immediate = patch.status !== undefined || patch.metrics !== undefined;
+  const confirming =
+    Array.isArray(patch.contents) && patch.contents.some((item) => item.confirmed);
+  const immediate =
+    patch.status !== undefined ||
+    patch.metrics !== undefined ||
+    patch.price !== undefined ||
+    patch.originalPrice !== undefined ||
+    patch.startDate !== undefined ||
+    patch.endDate !== undefined ||
+    confirming;
   const timer = setTimeout(() => {
     campaignTimers.delete(id);
     void flushCampaign(id);
@@ -72,13 +92,16 @@ if (typeof window !== "undefined") {
 export interface AppState {
   hydrated: boolean;
   error: string | null;
+  email: string;
+  shopSlug: string;
   brand: Brand;
   products: Product[];
   campaigns: Campaign[];
   load: () => Promise<void>;
   updateBrand: (b: Partial<Brand>) => Promise<boolean>;
-  addProduct: (p: Omit<Product, "id">) => Promise<void>;
+  addProduct: (p: Omit<Product, "id" | "listed"> & { listed?: boolean }) => Promise<void>;
   removeProduct: (id: string) => Promise<void>;
+  setProductListed: (id: string, listed: boolean) => Promise<void>;
   addCampaign: (
     c: Omit<Campaign, "id" | "code" | "createdAt" | "updatedAt">
   ) => Promise<string>;
@@ -91,6 +114,8 @@ export interface AppState {
 export const useStore = create<AppState>()((set, get) => ({
   hydrated: false,
   error: null,
+  email: "",
+  shopSlug: "",
   brand: emptyBrand,
   products: [],
   campaigns: [],
@@ -100,6 +125,8 @@ export const useStore = create<AppState>()((set, get) => ({
         brand: Brand;
         products: Product[];
         campaigns: Campaign[];
+        shopSlug: string;
+        email: string;
       }>("/api/state");
       window.localStorage.removeItem("markestra-store-v1");
       set({ ...data, hydrated: true, error: null });
@@ -133,6 +160,27 @@ export const useStore = create<AppState>()((set, get) => ({
       set((s) => ({ products: [product, ...s.products], error: null }));
     } catch (error) {
       set({ error: error instanceof Error ? error.message : "保存商品失败" });
+    }
+  },
+  setProductListed: async (id, listed) => {
+    const previous = get().products;
+    set({
+      products: previous.map((product) => (product.id === id ? { ...product, listed } : product)),
+    });
+    try {
+      const product = await api<Product>(`/api/products/${id}`, {
+        method: "PATCH",
+        body: JSON.stringify({ listed }),
+      });
+      set((state) => ({
+        products: state.products.map((item) => (item.id === id ? product : item)),
+        error: null,
+      }));
+    } catch (error) {
+      set({
+        products: previous,
+        error: error instanceof Error ? error.message : "更新上架状态失败",
+      });
     }
   },
   removeProduct: async (id) => {

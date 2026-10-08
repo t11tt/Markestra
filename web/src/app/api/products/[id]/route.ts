@@ -1,7 +1,8 @@
 import { prisma } from "@/server/db";
-import { DEMO_WORKSPACE_ID } from "@/server/demo";
+import { ImageError, persistImage } from "@/server/files";
 import { asRecord, jsonError, readJson } from "@/server/http";
 import { mapProduct, money } from "@/server/map";
+import { currentActor } from "@/server/session";
 
 export const dynamic = "force-dynamic";
 
@@ -9,6 +10,8 @@ export async function PATCH(
   request: Request,
   context: { params: Promise<{ id: string }> }
 ) {
+  const actor = await currentActor();
+  if (!actor) return jsonError("请先登录", 401);
   const { id } = await context.params;
   const body = asRecord(await readJson(request));
   if (!body) return jsonError("请求格式不正确");
@@ -19,6 +22,7 @@ export async function PATCH(
     price?: number;
     originalPrice?: number | null;
     image?: string | null;
+    listed?: boolean;
   } = {};
   if (typeof body.name === "string" && body.name.trim()) data.name = body.name.trim();
   if (typeof body.description === "string") data.description = body.description.trim();
@@ -35,12 +39,20 @@ export async function PATCH(
       data.originalPrice = originalPrice;
     }
   }
-  if (typeof body.image === "string") data.image = body.image;
+  if (typeof body.image === "string") {
+    try {
+      data.image = await persistImage(body.image);
+    } catch (error) {
+      if (error instanceof ImageError) return jsonError(error.message);
+      throw error;
+    }
+  }
+  if (typeof body.listed === "boolean") data.listed = body.listed;
   if (Object.keys(data).length === 0) return jsonError("没有可保存的修改");
 
   try {
     const existing = await prisma.product.findFirst({
-      where: { id, workspaceId: DEMO_WORKSPACE_ID },
+      where: { id, workspaceId: actor.workspaceId },
     });
     if (!existing) return jsonError("找不到这个商品", 404);
     const product = await prisma.product.update({ where: { id }, data });
@@ -55,10 +67,12 @@ export async function DELETE(
   _request: Request,
   context: { params: Promise<{ id: string }> }
 ) {
+  const actor = await currentActor();
+  if (!actor) return jsonError("请先登录", 401);
   const { id } = await context.params;
   try {
     const existing = await prisma.product.findFirst({
-      where: { id, workspaceId: DEMO_WORKSPACE_ID },
+      where: { id, workspaceId: actor.workspaceId },
     });
     if (!existing) return jsonError("找不到这个商品", 404);
     await prisma.product.delete({ where: { id } });

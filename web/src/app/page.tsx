@@ -14,6 +14,7 @@ import {
 } from "lucide-react";
 import { useI18n } from "@/lib/i18n";
 import { Logo, Mark } from "@/components/logo";
+import { PageAurora } from "@/components/page-aurora";
 import { LanguageSwitcher } from "@/components/ui";
 
 function ProductPreview() {
@@ -140,7 +141,9 @@ export default function Landing() {
   ];
 
   return (
-    <div className="relative min-h-screen overflow-x-hidden">
+    <div className="relative min-h-screen">
+      <PageAurora />
+      <div className="relative z-10 overflow-x-hidden">
       {/* nav */}
       <header className="sticky top-0 z-40 border-b border-line/60 bg-canvas/70 backdrop-blur-xl">
         <div className="mx-auto flex h-16 max-w-6xl items-center justify-between px-5 lg:px-8">
@@ -170,8 +173,6 @@ export default function Landing() {
 
       {/* hero */}
       <section className="relative">
-        <div className="glowfield opacity-90" />
-        <div className="pointer-events-none absolute inset-0 grain" />
         <div className="relative mx-auto max-w-6xl px-5 pb-16 pt-16 text-center lg:px-8 lg:pt-24">
           <div className="rise mx-auto inline-flex items-center gap-2 rounded-full border border-line bg-ink-900/60 px-3.5 py-1.5 text-xs text-muted backdrop-blur">
             <span className="flex h-1.5 items-end gap-0.5">
@@ -199,12 +200,12 @@ export default function Landing() {
             >
               {t("landing.primaryCta")} <ArrowRight size={16} />
             </Link>
-            <a
-              href="#flow"
+            <Link
+              href="/shop"
               className="inline-flex items-center gap-2 rounded-xl border border-line bg-ink-900/50 px-5 py-3 text-sm font-semibold text-cream backdrop-blur transition hover:bg-ink-800"
             >
               {t("landing.secondaryCta")}
-            </a>
+            </Link>
           </div>
 
           <p className="rise mt-5 text-xs text-subtle" style={{ animationDelay: "220ms" }}>
@@ -307,6 +308,7 @@ export default function Landing() {
           <p>© {new Date().getFullYear()} Markestra</p>
         </div>
       </footer>
+      </div>
     </div>
   );
 }

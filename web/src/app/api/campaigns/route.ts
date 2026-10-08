@@ -1,10 +1,15 @@
 import { Prisma } from "@prisma/client";
 import { prisma } from "@/server/db";
-import { DEMO_WORKSPACE_ID } from "@/server/demo";
+import { ImageError, persistImage } from "@/server/files";
 import { asRecord, jsonError, readJson } from "@/server/http";
 import { isChannel, isGoal, isStatus, isType, mapCampaign, money } from "@/server/map";
+import { currentActor } from "@/server/session";
 
 export const dynamic = "force-dynamic";
+
+function clip(value: unknown, max: number) {
+  return typeof value === "string" ? value.trim().slice(0, max) : "";
+}
 
 function campaignCode() {
   const suffix = Math.random().toString(36).slice(2, 6).toUpperCase();
@@ -12,6 +17,8 @@ function campaignCode() {
 }
 
 export async function POST(request: Request) {
+  const actor = await currentActor();
+  if (!actor) return jsonError("请先登录", 401);
   const body = asRecord(await readJson(request));
   if (!body) return jsonError("请求格式不正确");
 
@@ -24,7 +31,24 @@ export async function POST(request: Request) {
   const startDate = typeof body.startDate === "string" ? body.startDate : "";
   const endDate = typeof body.endDate === "string" ? body.endDate : "";
   const channels = Array.isArray(body.channels) ? body.channels.filter(isChannel) : [];
-  const image = typeof body.image === "string" ? body.image : null;
+  const category = clip(body.category, 40);
+  const offer = clip(body.offer, 80);
+  const intent = clip(body.intent, 160);
+  let image: string | null = null;
+  let images: string[] = [];
+  try {
+    const uploaded = Array.isArray(body.images)
+      ? body.images.filter((item): item is string => typeof item === "string").slice(0, 6)
+      : [];
+    images = (await Promise.all(uploaded.map((item) => persistImage(item)))).filter(
+      (item): item is string => Boolean(item)
+    );
+    if (typeof body.image === "string") image = await persistImage(body.image);
+    image = images[0] ?? image;
+  } catch (error) {
+    if (error instanceof ImageError) return jsonError(error.message);
+    throw error;
+  }
   const productId = typeof body.productId === "string" ? body.productId : null;
 
   if (!isType(body.type) || !isGoal(body.goal)) return jsonError("活动类型或目标不正确");
@@ -45,7 +69,7 @@ export async function POST(request: Request) {
       try {
         const campaign = await prisma.campaign.create({
           data: {
-            workspaceId: DEMO_WORKSPACE_ID,
+            workspaceId: actor.workspaceId,
             code: campaignCode(),
             name,
             type: body.type,
@@ -60,6 +84,10 @@ export async function POST(request: Request) {
             endDate,
             channels,
             image,
+            images,
+            category,
+            offer,
+            intent,
             contents: [],
           },
         });

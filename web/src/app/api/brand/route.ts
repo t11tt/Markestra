@@ -1,7 +1,7 @@
 import { prisma } from "@/server/db";
-import { DEMO_WORKSPACE_ID } from "@/server/demo";
 import { asRecord, jsonError, readJson } from "@/server/http";
 import { mapBrand } from "@/server/map";
+import { currentActor } from "@/server/session";
 
 export const dynamic = "force-dynamic";
 
@@ -10,6 +10,8 @@ function text(value: unknown) {
 }
 
 export async function PUT(request: Request) {
+  const actor = await currentActor();
+  if (!actor) return jsonError("请先登录", 401);
   const body = asRecord(await readJson(request));
   if (!body) return jsonError("请求格式不正确");
 
@@ -22,7 +24,7 @@ export async function PUT(request: Request) {
 
   try {
     const brand = await prisma.brand.update({
-      where: { workspaceId: DEMO_WORKSPACE_ID },
+      where: { workspaceId: actor.workspaceId },
       data: { name, address, hours, style, audience },
     });
     return Response.json(mapBrand(brand));

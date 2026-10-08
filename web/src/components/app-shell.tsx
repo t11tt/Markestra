@@ -1,29 +1,30 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
-import { useEffect, useState } from "react";
+import { usePathname, useRouter } from "next/navigation";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import {
   LayoutGrid,
   Megaphone,
   Package,
   Store,
-  Search,
-  Bell,
+  ShoppingBag,
   Plus,
-  ChevronDown,
+  LogOut,
   Menu,
   X,
 } from "lucide-react";
 import { useStore } from "@/lib/store";
 import { useI18n } from "@/lib/i18n";
 import { Logo } from "@/components/logo";
+import { PageAurora } from "@/components/page-aurora";
 import { LanguageSwitcher } from "@/components/ui";
 
 const nav = [
   { href: "/dashboard", key: "nav.overview", icon: LayoutGrid, exact: true },
   { href: "/campaigns", key: "nav.campaigns", icon: Megaphone },
   { href: "/products", key: "nav.products", icon: Package },
+  { href: "/store", key: "nav.store", icon: ShoppingBag },
   { href: "/brand", key: "nav.brand", icon: Store },
 ];
 
@@ -35,8 +36,30 @@ function isActive(pathname: string, href: string, exact?: boolean) {
 function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
   const pathname = usePathname();
   const { t } = useI18n();
+  const navRef = useRef<HTMLElement>(null);
+  const [pill, setPill] = useState<{ top: number; height: number } | null>(null);
+
+  useLayoutEffect(() => {
+    const root = navRef.current;
+    if (!root) return;
+    const measure = () => {
+      const active = root.querySelector<HTMLElement>("[data-active='true']");
+      if (!active) {
+        setPill(null);
+        return;
+      }
+      const rootBox = root.getBoundingClientRect();
+      const box = active.getBoundingClientRect();
+      const pad = Number.parseFloat(getComputedStyle(root).paddingTop) || 0;
+      setPill({ top: box.top - rootBox.top - pad, height: box.height });
+    };
+    measure();
+    window.addEventListener("resize", measure);
+    return () => window.removeEventListener("resize", measure);
+  }, [pathname]);
+
   return (
-    <div className="flex h-full flex-col">
+    <div className="relative z-10 flex h-full flex-col">
       <div className="px-5 py-5">
         <Link href="/dashboard" onClick={onNavigate}>
           <Logo size={34} />
@@ -53,7 +76,10 @@ function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
         </Link>
       </div>
 
-      <nav className="flex-1 space-y-1 px-3 py-2">
+      <nav ref={navRef} className="relative flex-1 space-y-1 px-3 py-2">
+        {pill && (
+          <span className="nav-liquid" style={{ top: pill.top, height: pill.height }} />
+        )}
         {nav.map((item) => {
           const active = isActive(pathname, item.href, item.exact);
           const Icon = item.icon;
@@ -61,23 +87,15 @@ function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
             <Link
               key={item.href}
               href={item.href}
+              data-active={active ? "true" : "false"}
               onClick={onNavigate}
-              className={`group relative flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition ${
-                active
-                  ? "bg-brand-500/10 text-brand-300"
-                  : "text-muted hover:bg-ink-800 hover:text-cream"
+              className={`group relative z-10 flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-colors ${
+                active ? "text-cream" : "text-muted hover:text-cream"
               }`}
             >
-              {active && (
-                <span className="absolute left-0 top-1/2 h-5 w-0.5 -translate-y-1/2 rounded-full bg-brand-400" />
-              )}
               <Icon
                 size={18}
-                className={
-                  active
-                    ? "text-brand-400"
-                    : "text-subtle group-hover:text-muted"
-                }
+                className={active ? "text-brand-200" : "text-subtle group-hover:text-muted"}
               />
               {t(item.key)}
             </Link>
@@ -86,7 +104,7 @@ function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
       </nav>
 
       <div className="p-3">
-        <div className="relative overflow-hidden rounded-2xl border border-line bg-ink-900 p-4">
+        <div className="relative overflow-hidden rounded-2xl border border-white/10 bg-white/[0.04] p-4 backdrop-blur-md">
           <div className="flex items-center gap-2 text-sm font-semibold text-cream">
             <span className="flex h-1.5 items-end gap-0.5">
               <span className="eq-bar inline-block h-2 w-0.5 bg-brand-400" style={{ animationDelay: "0ms" }} />
@@ -109,8 +127,11 @@ function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
 
 export function AppShell({ children }: { children: React.ReactNode }) {
   const brand = useStore((s) => s.brand);
+  const email = useStore((s) => s.email);
   const hydrated = useStore((s) => s.hydrated);
   const error = useStore((s) => s.error);
+  const pathname = usePathname();
+  const router = useRouter();
   const { t, locale, setLocale } = useI18n();
   const [mobileOpen, setMobileOpen] = useState(false);
 
@@ -120,7 +141,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
   if (!hydrated) {
     return (
-      <div className="flex min-h-screen flex-col items-center justify-center gap-4 bg-canvas px-6 text-center">
+      <div className="app-stage flex min-h-screen flex-col items-center justify-center gap-4 px-6 text-center">
         <p className="text-sm text-muted">{error ?? "正在读取工作区…"}</p>
         {error && (
           <button
@@ -135,8 +156,13 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   }
 
   return (
-    <div className="flex min-h-screen">
-      <aside className="sticky top-0 hidden h-screen w-64 shrink-0 border-r border-line bg-panel lg:block">
+    <div className="app-stage relative flex min-h-screen">
+      <PageAurora className="page-aurora-soft" />
+      <aside className="app-glass sticky top-0 z-20 hidden h-screen w-64 shrink-0 overflow-hidden border-r border-white/10 lg:block">
+        <div className="aside-wash" aria-hidden>
+          <span className="wash-a" />
+          <span className="wash-b" />
+        </div>
         <SidebarContent />
       </aside>
 
@@ -146,7 +172,11 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             className="absolute inset-0 bg-black/60 backdrop-blur-sm"
             onClick={() => setMobileOpen(false)}
           />
-          <div className="absolute left-0 top-0 h-full w-64 border-r border-line bg-panel shadow-xl animate-in">
+          <div className="app-glass absolute left-0 top-0 h-full w-64 overflow-hidden border-r border-white/10 shadow-xl animate-in">
+            <div className="aside-wash" aria-hidden>
+              <span className="wash-a" />
+              <span className="wash-b" />
+            </div>
             <button
               className="absolute right-3 top-4 rounded-lg p-1.5 text-subtle hover:bg-ink-800"
               onClick={() => setMobileOpen(false)}
@@ -158,8 +188,8 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         </div>
       )}
 
-      <div className="flex min-w-0 flex-1 flex-col">
-        <header className="sticky top-0 z-30 flex h-16 items-center gap-3 border-b border-line bg-canvas/80 px-4 backdrop-blur-md lg:px-6">
+      <div className="app-glass relative z-10 flex min-w-0 flex-1 flex-col">
+        <header className="sticky top-0 z-30 flex h-16 items-center gap-3 border-b border-white/10 bg-white/[0.03] px-4 backdrop-blur-xl lg:px-6">
           <button
             className="rounded-lg p-2 text-muted hover:bg-ink-800 lg:hidden"
             onClick={() => setMobileOpen(true)}
@@ -167,24 +197,9 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             <Menu size={20} />
           </button>
 
-          <div className="relative hidden max-w-md flex-1 sm:block">
-            <Search
-              size={16}
-              className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-subtle"
-            />
-            <input
-              placeholder={t("nav.searchPlaceholder")}
-              className="w-full rounded-xl border border-line bg-ink-900 py-2 pl-9 pr-3 text-sm text-cream placeholder:text-subtle outline-none transition focus:border-brand-500/50 focus:ring-4 focus:ring-brand-500/10"
-            />
-          </div>
-
           <div className="flex flex-1 items-center justify-end gap-2">
             <LanguageSwitcher locale={locale} setLocale={setLocale} />
-            <button className="relative rounded-xl p-2 text-muted transition hover:bg-ink-800 hover:text-cream">
-              <Bell size={19} />
-              <span className="absolute right-1.5 top-1.5 h-2 w-2 rounded-full bg-brand-400 ring-2 ring-canvas" />
-            </button>
-            <button className="flex items-center gap-2 rounded-xl px-2 py-1.5 transition hover:bg-ink-800">
+            <div className="flex items-center gap-2 rounded-xl px-2 py-1.5">
               <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-brand-300 to-brand-600 font-display text-sm font-bold text-white">
                 {brand.name.slice(0, 1)}
               </div>
@@ -193,10 +208,21 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                   {brand.name}
                 </div>
                 <div className="text-[11px] text-subtle">
-                  {t("nav.workspace")}
+                  {email || t("nav.workspace")}
                 </div>
               </div>
-              <ChevronDown size={15} className="hidden text-subtle sm:block" />
+            </div>
+            <button
+              className="rounded-lg p-2 text-muted transition hover:bg-ink-800 hover:text-cream"
+              title={t("nav.signOut")}
+              onClick={() => {
+                void fetch("/api/auth/logout", { method: "POST" }).then(() => {
+                  router.push("/login");
+                  router.refresh();
+                });
+              }}
+            >
+              <LogOut size={16} />
             </button>
           </div>
         </header>
@@ -206,7 +232,11 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             {error}
           </div>
         )}
-        <main className="flex-1">{children}</main>
+        <main className="flex-1">
+          <div key={pathname} className="page-rise">
+            {children}
+          </div>
+        </main>
       </div>
     </div>
   );

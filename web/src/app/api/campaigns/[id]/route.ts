@@ -1,8 +1,11 @@
 import { Prisma } from "@prisma/client";
 import { prisma } from "@/server/db";
-import { DEMO_WORKSPACE_ID } from "@/server/demo";
+import { revokeConfirmedDrafts, syncChannelDrafts } from "@/server/content";
+import { factsChanged } from "@/server/drafts";
+import { ImageError, persistImage } from "@/server/files";
 import { asRecord, jsonError, readJson } from "@/server/http";
 import { isStatus, mapCampaign, money } from "@/server/map";
+import { currentActor } from "@/server/session";
 import type { ChannelContent } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
@@ -26,6 +29,7 @@ function asContents(value: unknown): ChannelContent[] | null {
       tags: Array.isArray(row.tags) ? row.tags.filter((tag) => typeof tag === "string") : [],
       cta: row.cta,
       confirmed: Boolean(row.confirmed),
+      versionId: typeof row.versionId === "string" ? row.versionId : undefined,
     });
   }
   return contents;
@@ -45,17 +49,20 @@ export async function PATCH(
   request: Request,
   context: { params: Promise<{ id: string }> }
 ) {
+  const actor = await currentActor();
+  if (!actor) return jsonError("请先登录", 401);
   const { id } = await context.params;
   const body = asRecord(await readJson(request));
   if (!body) return jsonError("请求格式不正确");
 
   const data: Prisma.CampaignUpdateInput = {};
+  let nextContents: ChannelContent[] | undefined;
   if (typeof body.name === "string" && body.name.trim()) data.name = body.name.trim();
   if (isStatus(body.status)) data.status = body.status;
   if ("contents" in body) {
     const contents = asContents(body.contents);
     if (!contents) return jsonError("文案格式不正确");
-    data.contents = contents;
+    nextContents = contents;
   }
   if ("metrics" in body) {
     const metrics = asMetrics(body.metrics);
@@ -77,14 +84,57 @@ export async function PATCH(
       data.originalPrice = originalPrice;
     }
   }
+  if (typeof body.startDate === "string") {
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(body.startDate)) return jsonError("开始日期不正确");
+    data.startDate = body.startDate;
+  }
+  if (typeof body.endDate === "string") {
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(body.endDate)) return jsonError("结束日期不正确");
+    data.endDate = body.endDate;
+  }
+  if (typeof body.image === "string") {
+    try {
+      data.image = await persistImage(body.image);
+    } catch (error) {
+      if (error instanceof ImageError) return jsonError(error.message);
+      throw error;
+    }
+  }
 
-  if (Object.keys(data).length === 0) return jsonError("没有可保存的修改");
+  if (Object.keys(data).length === 0 && !nextContents) return jsonError("没有可保存的修改");
 
   try {
     const existing = await prisma.campaign.findFirst({
-      where: { id, workspaceId: DEMO_WORKSPACE_ID },
+      where: { id, workspaceId: actor.workspaceId },
     });
     if (!existing) return jsonError("找不到这个活动", 404);
+    if (nextContents) {
+      nextContents = await syncChannelDrafts(id, nextContents);
+    }
+    const price = typeof data.price === "number" ? data.price : existing.price;
+    const originalPrice =
+      data.originalPrice === null
+        ? null
+        : typeof data.originalPrice === "number"
+          ? data.originalPrice
+          : existing.originalPrice;
+    const startDate = typeof data.startDate === "string" ? data.startDate : existing.startDate;
+    const endDate = typeof data.endDate === "string" ? data.endDate : existing.endDate;
+    if (
+      factsChanged(
+        {
+          price: existing.price,
+          originalPrice: existing.originalPrice,
+          startDate: existing.startDate,
+          endDate: existing.endDate,
+        },
+        { price, originalPrice, startDate, endDate }
+      )
+    ) {
+      const base = nextContents ?? asContents(existing.contents) ?? [];
+      nextContents = await revokeConfirmedDrafts(id, base);
+    }
+    if (nextContents) data.contents = nextContents as unknown as Prisma.InputJsonValue;
     const campaign = await prisma.campaign.update({ where: { id }, data });
     return Response.json(mapCampaign(campaign));
   } catch (error) {
@@ -99,8 +149,10 @@ export async function DELETE(
 ) {
   const { id } = await context.params;
   try {
+    const actor = await currentActor();
+    if (!actor) return jsonError("请先登录", 401);
     const existing = await prisma.campaign.findFirst({
-      where: { id, workspaceId: DEMO_WORKSPACE_ID },
+      where: { id, workspaceId: actor.workspaceId },
     });
     if (!existing) return jsonError("找不到这个活动", 404);
     await prisma.campaign.delete({ where: { id } });

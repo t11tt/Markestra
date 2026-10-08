@@ -1,6 +1,8 @@
 import { Prisma } from "@prisma/client";
+import type { ChannelContent } from "@/lib/types";
 import { prisma } from "./db";
-import { DEMO_WORKSPACE_ID } from "./demo";
+import { saveDataUrl } from "./files";
+import { dedupeKey, realSummary } from "./metrics";
 import { isChannel, mapCampaign } from "./map";
 
 const METRICS = ["views", "saves", "inquiries"] as const;
@@ -10,26 +12,48 @@ function isMetric(value: string): value is MetricName {
   return METRICS.includes(value as MetricName);
 }
 
-async function ownedCampaign(id: string) {
+async function ownedCampaign(id: string, workspaceId: string) {
   return prisma.campaign.findFirst({
-    where: { id, workspaceId: DEMO_WORKSPACE_ID },
+    where: { id, workspaceId },
   });
 }
 
-function dedupeKey(input: {
-  campaignId: string;
-  channel: string;
-  metric: string;
-  observedOn: string;
-  window: string;
-  demo: boolean;
-}) {
-  return [input.campaignId, input.channel, input.metric, input.observedOn, input.window, input.demo ? "demo" : "real"].join("|");
+function asDrafts(value: unknown): ChannelContent[] {
+  if (!Array.isArray(value)) return [];
+  return value.flatMap((item) => {
+    if (!item || typeof item !== "object") return [];
+    const row = item as Partial<ChannelContent>;
+    if (!isChannel(row.channel)) return [];
+    if (typeof row.title !== "string" || typeof row.body !== "string") return [];
+    return [
+      {
+        channel: row.channel,
+        title: row.title,
+        body: row.body,
+        tags: Array.isArray(row.tags) ? row.tags.filter((tag): tag is string => typeof tag === "string") : [],
+        cta: typeof row.cta === "string" ? row.cta : "",
+        confirmed: row.confirmed === true,
+        versionId: typeof row.versionId === "string" ? row.versionId : undefined,
+      },
+    ];
+  });
 }
 
-export async function readOps(campaignId: string) {
+async function confirmedVersion(campaignId: string, contents: ChannelContent[], channel: string) {
+  const content = contents.find((item) => item.channel === channel && item.confirmed && item.versionId);
+  if (!content?.versionId) throw new Error("请先确认这一版文案");
+  const version = await prisma.contentVersion.findFirst({
+    where: { id: content.versionId, campaignId, channel, confirmed: true },
+  });
+  if (!version || version.title !== content.title || version.body !== content.body) {
+    throw new Error("确认的版本和当前文案不一致");
+  }
+  return version;
+}
+
+export async function readOps(campaignId: string, workspaceId: string) {
   const campaign = await prisma.campaign.findFirst({
-    where: { id: campaignId, workspaceId: DEMO_WORKSPACE_ID },
+    where: { id: campaignId, workspaceId },
     include: {
       parent: { select: { id: true, code: true, name: true } },
       exports: { orderBy: { createdAt: "desc" }, take: 20 },
@@ -46,6 +70,8 @@ export async function readOps(campaignId: string) {
       channel: row.channel,
       title: row.title,
       price: row.price,
+      versionId: row.versionId,
+      posterFile: row.posterFile,
       createdAt: row.createdAt.getTime(),
     })),
     publications: campaign.publications.map((row) => ({
@@ -54,6 +80,7 @@ export async function readOps(campaignId: string) {
       publishedAt: row.publishedAt.toISOString(),
       link: row.link,
       note: row.note,
+      versionId: row.versionId,
     })),
     metrics: campaign.metricEntries.map((row) => ({
       id: row.id,
@@ -76,32 +103,33 @@ export async function readOps(campaignId: string) {
   };
 }
 
-export async function recordExport(campaignId: string, channels: string[]) {
-  const campaign = await ownedCampaign(campaignId);
+export async function recordExport(
+  campaignId: string,
+  workspaceId: string,
+  items: { channel: string; png?: string }[]
+) {
+  const campaign = await ownedCampaign(campaignId, workspaceId);
   if (!campaign) return null;
-  const confirmed = (Array.isArray(campaign.contents) ? campaign.contents : []).filter(
-    (row): row is { channel: string; title: string; body: string; confirmed: boolean } =>
-      !!row &&
-      typeof row === "object" &&
-      isChannel((row as { channel?: string }).channel) &&
-      (row as { confirmed?: boolean }).confirmed === true &&
-      typeof (row as { title?: string }).title === "string" &&
-      typeof (row as { body?: string }).body === "string"
-  );
-  const selected = channels.length
-    ? confirmed.filter((row) => channels.includes(row.channel))
+  const confirmed = asDrafts(campaign.contents).filter((row) => row.confirmed);
+  const selected = items.length
+    ? confirmed.filter((row) => items.some((item) => item.channel === row.channel))
     : confirmed;
   if (selected.length === 0) throw new Error("确认全部渠道后才能导出");
   const saved = [];
   for (const item of selected) {
+    const version = await confirmedVersion(campaignId, confirmed, item.channel);
+    const png = items.find((entry) => entry.channel === item.channel)?.png;
+    const posterFile = png ? await saveDataUrl(png) : null;
     saved.push(
       await prisma.exportRecord.create({
         data: {
           campaignId,
+          versionId: version.id,
           channel: item.channel,
-          title: item.title,
-          body: item.body,
+          title: version.title,
+          body: version.body,
           price: campaign.price,
+          posterFile,
         },
       })
     );
@@ -111,15 +139,18 @@ export async function recordExport(campaignId: string, channels: string[]) {
 
 export async function recordPublication(
   campaignId: string,
+  workspaceId: string,
   input: { channel: string; publishedAt: string; link?: string; note?: string }
 ) {
-  const campaign = await ownedCampaign(campaignId);
+  const campaign = await ownedCampaign(campaignId, workspaceId);
   if (!campaign || !isChannel(input.channel)) return null;
   const publishedAt = new Date(input.publishedAt);
   if (Number.isNaN(publishedAt.getTime())) throw new Error("发布时间不正确");
+  const version = await confirmedVersion(campaignId, asDrafts(campaign.contents), input.channel);
   const row = await prisma.publication.create({
     data: {
       campaignId,
+      versionId: version.id,
       channel: input.channel,
       publishedAt,
       link: input.link?.trim() || null,
@@ -138,6 +169,7 @@ export async function recordPublication(
 
 export async function addMetric(
   campaignId: string,
+  workspaceId: string,
   input: {
     channel: string;
     metric: string;
@@ -148,7 +180,7 @@ export async function addMetric(
     source?: string;
   }
 ) {
-  const campaign = await ownedCampaign(campaignId);
+  const campaign = await ownedCampaign(campaignId, workspaceId);
   if (!campaign || !isChannel(input.channel) || !isMetric(input.metric)) return null;
   if (!Number.isFinite(input.value) || input.value < 0) throw new Error("指标数值不正确");
   if (!/^\d{4}-\d{2}-\d{2}$/.test(input.observedOn)) throw new Error("观察日期不正确");
@@ -179,7 +211,7 @@ export async function addMetric(
   return { inserted: 1, skipped: 0 };
 }
 
-export async function importMetrics(campaignId: string, csv: string) {
+export async function importMetrics(campaignId: string, workspaceId: string, csv: string) {
   const lines = csv
     .split(/\r?\n/)
     .map((line) => line.trim())
@@ -195,7 +227,7 @@ export async function importMetrics(campaignId: string, csv: string) {
   for (const line of lines.slice(1)) {
     const cells = line.split(",").map((cell) => cell.trim());
     const row = Object.fromEntries(header.map((name, index) => [name, cells[index] ?? ""]));
-    const result = await addMetric(campaignId, {
+    const result = await addMetric(campaignId, workspaceId, {
       channel: row.channel,
       metric: row.metric,
       value: Number(row.value),
@@ -218,35 +250,21 @@ function channelLabel(channel: string) {
   return channel;
 }
 
-function pickLatest(
-  rows: { metric: string; observedOn: string; value: number; window: string; demo: boolean }[],
-  metric: string,
-  demo: boolean
-) {
-  const matching = rows.filter((row) => row.metric === metric && row.demo === demo);
-  const cumulative = matching
-    .filter((row) => row.window === "cumulative")
-    .sort((a, b) => a.observedOn.localeCompare(b.observedOn));
-  if (cumulative.length > 0) return cumulative[cumulative.length - 1].value;
-  const interval = matching.filter((row) => row.window === "interval");
-  if (interval.length === 0) return undefined;
-  return interval.reduce((sum, row) => sum + row.value, 0);
-}
-
-export async function writeReview(campaignId: string) {
+export async function writeReview(campaignId: string, workspaceId: string) {
   const campaign = await prisma.campaign.findFirst({
-    where: { id: campaignId, workspaceId: DEMO_WORKSPACE_ID },
+    where: { id: campaignId, workspaceId },
     include: { metricEntries: true, publications: true },
   });
   if (!campaign) return null;
   const channels = (Array.isArray(campaign.channels) ? campaign.channels : []).filter(isChannel);
+  const figures = realSummary(channels, campaign.metricEntries);
   const realBits: string[] = [];
   const missing: string[] = [];
-  for (const channel of channels) {
-    const rows = campaign.metricEntries.filter((row) => row.channel === channel);
-    const views = pickLatest(rows, "views", false);
-    const saves = pickLatest(rows, "saves", false);
-    const inquiries = pickLatest(rows, "inquiries", false);
+  for (const figure of figures) {
+    const channel = figure.channel;
+    const views = figure.views;
+    const saves = figure.saves;
+    const inquiries = figure.inquiries;
     if (views == null && saves == null && inquiries == null) {
       missing.push(`${channelLabel(channel)} 还没有真实结果`);
       continue;
@@ -299,8 +317,8 @@ function campaignCode() {
   return `MK-${new Date().getFullYear()}-${Math.random().toString(36).slice(2, 6).toUpperCase()}`;
 }
 
-export async function createNextRound(campaignId: string) {
-  const current = await ownedCampaign(campaignId);
+export async function createNextRound(campaignId: string, workspaceId: string) {
+  const current = await ownedCampaign(campaignId, workspaceId);
   if (!current) return null;
   for (let attempt = 0; attempt < 5; attempt++) {
     try {
@@ -321,6 +339,10 @@ export async function createNextRound(campaignId: string) {
           endDate: current.endDate,
           channels: current.channels as Prisma.InputJsonValue,
           image: current.image,
+          images: current.images as Prisma.InputJsonValue,
+          category: current.category,
+          offer: current.offer,
+          intent: current.intent,
           contents: [],
           parentId: current.id,
         },

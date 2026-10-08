@@ -8,6 +8,7 @@ import {
   ChevronRight,
   ImagePlus,
   Sparkles,
+  X,
 } from "lucide-react";
 import { useStore } from "@/lib/store";
 import {
@@ -28,6 +29,10 @@ import {
   CHANNELS,
   GOALS,
 } from "@/lib/types";
+import { isPhotoSrc } from "@/lib/image";
+import { readPhotoFile } from "@/lib/photos";
+
+const PHOTO_LIMIT = 6;
 
 const EMOJI_PICKS = ["🍱", "☕", "🥮", "🍰", "🍜", "🍔", "🧋", "🎁", "🛍️", "✨"];
 
@@ -47,6 +52,11 @@ function NewCampaignInner() {
   const [price, setPrice] = useState("");
   const [originalPrice, setOriginalPrice] = useState("");
   const [image, setImage] = useState("🍱");
+  const [photos, setPhotos] = useState<string[]>([]);
+  const [category, setCategory] = useState("");
+  const [offer, setOffer] = useState("");
+  const [intent, setIntent] = useState("");
+  const [photoNote, setPhotoNote] = useState("");
   const [goal, setGoal] = useState<CampaignGoal>("to_store");
   const [channels, setChannels] = useState<Channel[]>(["xiaohongshu", "moments"]);
   const [startDate, setStartDate] = useState("");
@@ -58,15 +68,31 @@ function NewCampaignInner() {
       prev.includes(c) ? prev.filter((x) => x !== c) : [...prev, c]
     );
 
-  function onImageFile(e: React.ChangeEvent<HTMLInputElement>) {
-    const f = e.target.files?.[0];
-    if (!f) return;
-    const reader = new FileReader();
-    reader.onload = () => setImage(reader.result as string);
-    reader.readAsDataURL(f);
+  async function onImageFiles(e: React.ChangeEvent<HTMLInputElement>) {
+    const files = Array.from(e.target.files ?? []);
+    e.target.value = "";
+    const room = PHOTO_LIMIT - photos.length;
+    if (room <= 0 || files.length === 0) {
+      setPhotoNote(t("wiz.photoLimit"));
+      return;
+    }
+    try {
+      const next = await Promise.all(files.slice(0, room).map(readPhotoFile));
+      setPhotos((prev) => [...prev, ...next].slice(0, PHOTO_LIMIT));
+      setImage(next[0] ?? image);
+      setPhotoNote(files.length > room ? t("wiz.photoLimit") : "");
+    } catch {
+      setPhotoNote(t("wiz.photoBad"));
+    }
   }
 
-  const isDataUrl = image.startsWith("data:");
+  function removePhoto(index: number) {
+    setPhotos((prev) => {
+      const next = prev.filter((_, i) => i !== index);
+      setImage(next[0] ?? "🍱");
+      return next;
+    });
+  }
   const canNext =
     step === 0
       ? !!type
@@ -89,7 +115,11 @@ function NewCampaignInner() {
       startDate,
       endDate,
       channels,
-      image,
+      image: photos[0] ?? image,
+      images: photos,
+      category: category.trim(),
+      offer: offer.trim(),
+      intent: intent.trim(),
       contents: [],
     });
     if (!id) {
@@ -182,44 +212,95 @@ function NewCampaignInner() {
               <p className="mt-1 text-sm text-muted">{t("wiz.s1Desc")}</p>
             </div>
 
-            <div className="flex flex-col gap-5 sm:flex-row">
-              <div className="sm:w-48">
-                <div className="mb-1.5 text-sm font-medium text-muted">
-                  {t("wiz.image")}
-                </div>
-                <div className="flex aspect-square w-full items-center justify-center overflow-hidden rounded-2xl border border-line bg-ink-900 text-6xl">
-                  {isDataUrl ? (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img src={image} alt="" className="h-full w-full object-cover" />
-                  ) : (
-                    image
-                  )}
-                </div>
-                <div className="mt-2 flex flex-wrap gap-1">
-                  {EMOJI_PICKS.map((e) => (
+            <div>
+              <div className="mb-1.5 text-sm font-medium text-muted">{t("wiz.image")}</div>
+              <p className="mb-3 text-xs text-muted">{t("wiz.photosHint")}</p>
+              <div className="grid grid-cols-3 gap-2 sm:grid-cols-6">
+                {photos.map((src, index) => (
+                  <div
+                    key={`${index}-${src.slice(0, 24)}`}
+                    className="relative aspect-square overflow-hidden rounded-2xl border border-line bg-ink-900"
+                  >
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img src={src} alt="" className="h-full w-full object-cover" />
                     <button
-                      key={e}
-                      onClick={() => setImage(e)}
+                      type="button"
+                      onClick={() => removePhoto(index)}
+                      className="absolute right-1 top-1 flex h-6 w-6 items-center justify-center rounded-full bg-ink-950/80 text-cream"
+                      aria-label={t("wiz.removePhoto")}
+                    >
+                      <X size={12} />
+                    </button>
+                  </div>
+                ))}
+                {photos.length === 0 && (
+                  <div className="flex aspect-square items-center justify-center rounded-2xl border border-line bg-ink-900 text-4xl">
+                    {isPhotoSrc(image) ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img src={image} alt="" className="h-full w-full object-cover" />
+                    ) : (
+                      image
+                    )}
+                  </div>
+                )}
+              </div>
+              {photos.length === 0 && (
+                <div className="mt-2 flex flex-wrap gap-1">
+                  {EMOJI_PICKS.map((emoji) => (
+                    <button
+                      key={emoji}
+                      type="button"
+                      onClick={() => {
+                        setPhotos([]);
+                        setImage(emoji);
+                      }}
                       className={`flex h-8 w-8 items-center justify-center rounded-lg text-lg transition hover:bg-ink-800 ${
-                        image === e ? "bg-brand-500/10 ring-1 ring-brand-500/40" : ""
+                        image === emoji ? "bg-brand-500/10 ring-1 ring-brand-500/40" : ""
                       }`}
                     >
-                      {e}
+                      {emoji}
                     </button>
                   ))}
                 </div>
-                <label className="mt-2 flex cursor-pointer items-center justify-center gap-1.5 rounded-lg border border-dashed border-line py-2 text-xs text-muted transition hover:border-brand-500/40 hover:text-brand-300">
-                  <ImagePlus size={14} /> {t("wiz.upload")}
-                  <input
-                    type="file"
-                    accept="image/*"
-                    className="hidden"
-                    onChange={onImageFile}
-                  />
-                </label>
-              </div>
+              )}
+              <label className="mt-2 flex cursor-pointer items-center justify-center gap-1.5 rounded-lg border border-dashed border-line py-2 text-xs text-muted transition hover:border-brand-500/40 hover:text-brand-300">
+                <ImagePlus size={14} /> {t("wiz.upload")}
+                <input
+                  type="file"
+                  accept="image/*"
+                  multiple
+                  className="hidden"
+                  onChange={onImageFiles}
+                />
+              </label>
+              {photoNote && <p className="mt-2 text-xs text-warn">{photoNote}</p>}
+            </div>
 
-              <div className="flex-1 space-y-4">
+            <div className="grid gap-4 sm:grid-cols-3">
+              <Field label={t("wiz.category")}>
+                <Input
+                  value={category}
+                  onChange={(e) => setCategory(e.target.value)}
+                  placeholder={t("wiz.categoryPh")}
+                />
+              </Field>
+              <Field label={t("wiz.offer")}>
+                <Input
+                  value={offer}
+                  onChange={(e) => setOffer(e.target.value)}
+                  placeholder={t("wiz.offerPh")}
+                />
+              </Field>
+              <Field label={t("wiz.intent")}>
+                <Input
+                  value={intent}
+                  onChange={(e) => setIntent(e.target.value)}
+                  placeholder={t("wiz.intentPh")}
+                />
+              </Field>
+            </div>
+
+            <div className="space-y-4">
                 <Field label={t("wiz.name")} required>
                   <Input
                     value={productName}
@@ -253,7 +334,6 @@ function NewCampaignInner() {
                     />
                   </Field>
                 </div>
-              </div>
             </div>
           </div>
         )}

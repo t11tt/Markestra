@@ -51,6 +51,7 @@ function StatCard({
 export default function DashboardPage() {
   const campaigns = useStore((s) => s.campaigns);
   const brand = useStore((s) => s.brand);
+  const shopSlug = useStore((s) => s.shopSlug);
   const { t } = useI18n();
 
   const sum = (f: (c: Campaign) => number) => campaigns.reduce((a, c) => a + f(c), 0);
@@ -71,9 +72,8 @@ export default function DashboardPage() {
   return (
     <PageContainer>
       {/* Hero */}
-      <div className="relative mb-6 overflow-hidden rounded-3xl border border-line bg-ink-900 grain">
-        <div className="glowfield opacity-70" />
-        <div className="absolute inset-0 bg-gradient-to-r from-ink-950/90 via-ink-950/40 to-transparent" />
+      <div className="relative mb-6 overflow-hidden rounded-3xl border border-white/10 bg-white/[0.04] backdrop-blur-xl grain">
+        <div className="glowfield opacity-40" />
         <div className="relative flex flex-col gap-6 p-6 lg:flex-row lg:items-center lg:justify-between lg:p-8">
           <div>
             <p className="text-sm font-medium text-brand-300">
@@ -93,10 +93,10 @@ export default function DashboardPage() {
                 <Plus size={16} /> {t("nav.create")}
               </Link>
               <Link
-                href="/campaigns"
+                href={shopSlug ? `/shop?slug=${encodeURIComponent(shopSlug)}` : "/shop"}
                 className="inline-flex items-center gap-2 rounded-xl border border-line bg-ink-900/60 px-4 py-2.5 text-sm font-semibold text-cream transition hover:bg-ink-800"
               >
-                {t("dash.viewAll")}
+                {t("dash.openShop")}
               </Link>
             </div>
           </div>

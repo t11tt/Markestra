@@ -1,11 +1,14 @@
 import { prisma } from "@/server/db";
-import { DEMO_WORKSPACE_ID } from "@/server/demo";
+import { ImageError, persistImage } from "@/server/files";
 import { asRecord, jsonError, readJson } from "@/server/http";
 import { mapProduct, money } from "@/server/map";
+import { currentActor } from "@/server/session";
 
 export const dynamic = "force-dynamic";
 
 export async function POST(request: Request) {
+  const actor = await currentActor();
+  if (!actor) return jsonError("请先登录", 401);
   const body = asRecord(await readJson(request));
   if (!body) return jsonError("请求格式不正确");
 
@@ -15,7 +18,15 @@ export async function POST(request: Request) {
   const originalPrice = body.originalPrice == null || body.originalPrice === ""
     ? null
     : money(body.originalPrice);
-  const image = typeof body.image === "string" ? body.image : null;
+  let image: string | null = null;
+  if (typeof body.image === "string") {
+    try {
+      image = await persistImage(body.image);
+    } catch (error) {
+      if (error instanceof ImageError) return jsonError(error.message);
+      throw error;
+    }
+  }
 
   if (!name) return jsonError("商品名称不能为空");
   if (price === undefined) return jsonError("请填写有效价格");
@@ -26,7 +37,7 @@ export async function POST(request: Request) {
   try {
     const product = await prisma.product.create({
       data: {
-        workspaceId: DEMO_WORKSPACE_ID,
+        workspaceId: actor.workspaceId,
         name,
         description,
         price,
