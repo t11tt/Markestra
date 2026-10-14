@@ -55,8 +55,3 @@ git checkout main
 
 这一版不会替你发到小红书、朋友圈或抖音，也不会去抓取这些平台的数据。
 
-## 不要提交的文件
-
-本地数据库在 `web/data`，千问密钥在 `web/.env`。这两处都不要提交。没有密钥时，文案生成使用本地演示结果。
-
-`npm run dev` 会自己写上 `DATABASE_URL`。密钥写在 `DASHSCOPE_API_KEY`。更多启动说明见 `web/README.md`。
