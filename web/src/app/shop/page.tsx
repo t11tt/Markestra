@@ -94,7 +94,7 @@ export default function ShopPage() {
   };
 
   return (
-    <div className="min-h-screen bg-canvas text-cream">
+    <div className="mk-skin min-h-screen bg-canvas text-cream">
       <header className="sticky top-0 z-30 border-b border-line bg-canvas/80 backdrop-blur-md">
         <div className="mx-auto flex h-16 max-w-5xl items-center justify-between gap-4 px-5">
           <div>

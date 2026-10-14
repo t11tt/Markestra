@@ -1,18 +1,62 @@
 # Markestra
 
-同事克隆后，在 `web` 目录执行：
+商家自己的网店和宣传工作台。名字来自 market 和 orchestra：货架、价格、宣传活动用同一份资料。
+
+**当前版本：0.3.0**（`main` 分支，标签 `v0.3.0`）
+
+同事看进度以这个仓库的 `main` 为准。每个能运行的节点都有版本号，旧进度还在对应标签上。
+
+## 拿到当前进度
 
 ```bash
+git clone https://github.com/t11tt/Markestra.git
+cd Markestra/web
 npm install
 npm run dev
 ```
 
-然后打开 http://localhost:3000 。`npm run dev` 会启动本机数据库、写入表结构，并放入同一套演示店铺、活动、发布记录和复盘。不需要单独安装 PostgreSQL，也不要拷贝别人电脑上的数据库文件。
+然后打开 http://localhost:3000 。
 
-本地数据库在 `web/data`，千问密钥在 `web/.env`。这两处都不要提交。没有密钥时，文案生成使用本地演示结果。更多说明见 `web/README.md`。
+`npm run dev` 会启动本机数据库、写入表结构，并放入同一套演示店铺、活动、发布记录和复盘。不需要单独安装 PostgreSQL，也不要拷贝别人电脑上的 `web/data`。
 
-## Current implementation
+看某一个旧版本：
 
-The runnable workspace lives in `web/`. A merchant can keep brand and product facts, plan a campaign, draft channel copy, confirm and export a poster, record a publication, enter or import metrics, and write a review that starts the next round. Demo rows are labeled separately from real metrics. Exporting a poster does not publish it, and the review does not treat metric changes as proof of sales.
+```bash
+git fetch --tags
+git checkout v0.2.0
+```
 
-The first version does not post to Xiaohongshu, WeChat, or Douyin, and it does not scrape platform data.
+回到最新进度：
+
+```bash
+git checkout main
+```
+
+## 版本
+
+| 版本 | 标签 | 进度 |
+| --- | --- | --- |
+| 0.3.0 | `v0.3.0` | 当前。介绍页、标志原稿，以及登录、工作台、示例网店的同一套配色。 |
+| 0.2.0 | `v0.2.0` | 商家登录后有自己的网店。订单、已确认的文案和上传的图片留在该账号里，海报使用商家自己的照片。 |
+| 0.1.0 | `v0.1.0` | 本机营销工作台和演示数据。品牌与商品资料、活动、渠道文案、海报导出、发布记录、指标和复盘。 |
+
+### 0.3.0 这一版
+
+- 首页是介绍页：奶油底、橄榄色文字、柠檬绿按钮。滚动动画还在。
+- 标志用设计稿原图，字也在图里，没有另写一套。
+- 登录、工作台和示例网店改成同一套配色。
+- 侧栏选中的滑动效果和毛玻璃模糊保持原样。
+
+首页打开就能看到。工作台用登录页的「以演示身份进入」。示例网店是拾光食堂。
+
+### 现在能做的事
+
+商家可以保存品牌和商品资料，规划一场宣传，写渠道文案，确认并导出海报，登记发布，录入或导入指标，再写复盘并开始下一轮。演示数据会单独标出。导出海报不会替你发布，复盘也不会把指标变化当成销量证明。
+
+这一版不会替你发到小红书、朋友圈或抖音，也不会去抓取这些平台的数据。
+
+## 不要提交的文件
+
+本地数据库在 `web/data`，千问密钥在 `web/.env`。这两处都不要提交。没有密钥时，文案生成使用本地演示结果。
+
+`npm run dev` 会自己写上 `DATABASE_URL`。密钥写在 `DASHSCOPE_API_KEY`。更多启动说明见 `web/README.md`。

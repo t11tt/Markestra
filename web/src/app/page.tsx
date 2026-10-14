@@ -1,314 +1,555 @@
 "use client";
 
 import Link from "next/link";
-import {
-  ArrowRight,
-  Sparkles,
-  Eye,
-  ShieldCheck,
-  BarChart3,
-  Wand2,
-  FileText,
-  Megaphone,
-  Download,
-} from "lucide-react";
+import { useEffect, useRef, useState } from "react";
 import { useI18n } from "@/lib/i18n";
-import { Logo, Mark } from "@/components/logo";
-import { PageAurora } from "@/components/page-aurora";
-import { LanguageSwitcher } from "@/components/ui";
+import { Logo } from "@/components/logo";
+import "./landing.css";
 
-function ProductPreview() {
+function Topo({ className = "" }: { className?: string }) {
   return (
-    <div className="relative mx-auto w-full max-w-3xl">
-      {/* glow behind window */}
-      <div className="glowfield opacity-80" />
-      <div className="relative overflow-hidden rounded-2xl border border-line bg-ink-900/80 shadow-pop backdrop-blur-xl grain">
-        {/* window bar */}
-        <div className="flex items-center gap-2 border-b border-line px-4 py-3">
-          <span className="h-2.5 w-2.5 rounded-full bg-ink-600" />
-          <span className="h-2.5 w-2.5 rounded-full bg-ink-600" />
-          <span className="h-2.5 w-2.5 rounded-full bg-ink-600" />
-          <div className="ml-3 flex items-center gap-2 rounded-md bg-ink-800 px-2.5 py-1 text-[11px] text-subtle">
-            <Mark size={13} /> markestra.app / workbench
-          </div>
-        </div>
-        <div className="grid grid-cols-[1fr_150px] gap-0">
-          {/* main */}
-          <div className="p-5">
-            <div className="flex items-center justify-between">
-              <div>
-                <div className="font-display text-sm text-cream">
-                  双人午餐套餐 · 到店引流
-                </div>
-                <div className="mt-0.5 font-mono text-[11px] text-subtle">
-                  MK-2026-A1C0 · ¥68
-                </div>
-              </div>
-              <span className="rounded-full bg-cool/10 px-2 py-0.5 text-[11px] font-medium text-cool ring-1 ring-inset ring-cool/25">
-                待确认
-              </span>
-            </div>
-            <div className="mt-4 flex gap-1.5">
-              {["小红书", "朋友圈", "抖音"].map((c, i) => (
-                <span
-                  key={c}
-                  className={`rounded-lg px-2.5 py-1 text-[11px] font-medium ${
-                    i === 0
-                      ? "bg-brand-600 text-white"
-                      : "bg-ink-800 text-muted ring-1 ring-inset ring-line"
-                  }`}
-                >
-                  {c}
-                </span>
-              ))}
-            </div>
-            <div className="mt-4 space-y-2.5">
-              <div className="h-2.5 w-4/5 rounded-full bg-ink-700" />
-              <div className="h-2.5 w-full rounded-full bg-ink-700" />
-              <div className="h-2.5 w-11/12 rounded-full bg-ink-700" />
-              <div className="h-2.5 w-2/3 rounded-full bg-ink-700" />
-            </div>
-            <div className="mt-4 flex items-center gap-2">
-              <span className="inline-flex items-center gap-1.5 rounded-lg bg-brand-600 px-3 py-1.5 text-[11px] font-semibold text-white">
-                <Sparkles size={12} /> 生成内容
-              </span>
-              <span className="inline-flex items-center gap-1.5 rounded-lg bg-ink-800 px-3 py-1.5 text-[11px] font-medium text-muted ring-1 ring-inset ring-line">
-                重新生成
-              </span>
-            </div>
-          </div>
-          {/* mini phone preview */}
-          <div className="border-l border-line p-4">
-            <div className="mx-auto w-full overflow-hidden rounded-xl bg-white">
-              <div className="flex aspect-[3/4] items-center justify-center bg-gradient-to-br from-rose-100 to-amber-100 text-4xl">
-                🍱
-              </div>
-              <div className="space-y-1.5 p-2.5">
-                <div className="h-2 w-4/5 rounded-full bg-slate-300" />
-                <div className="h-1.5 w-full rounded-full bg-slate-200" />
-                <div className="h-1.5 w-5/6 rounded-full bg-slate-200" />
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
+    <svg
+      className={`mk-topo ${className}`}
+      viewBox="0 0 1600 1000"
+      preserveAspectRatio="xMidYMid slice"
+      aria-hidden
+    >
+      <path d="M-80 140C180 40 340 280 620 180s460-160 760 20 360 80 420-40" />
+      <path d="M-80 230C200 110 380 360 680 250s430-150 720 30 340 90 400-20" />
+      <path d="M-40 420C240 300 420 560 740 430s400-120 680 40" />
+      <path d="M80 620C320 500 520 760 860 640s380-80 640 60" />
+      <path d="M200 820C460 700 700 940 1040 800s340-40 520 80" />
+      <path d="M980 40C1100 180 1040 340 1220 420s220 40 280 180-20 260 80 340" />
+      <path d="M1080 80C1220 220 1140 400 1320 470s180 20 240 160" />
+      <path d="M120 60C260 180 180 320 80 460" />
+    </svg>
   );
 }
 
-function Feature({
-  icon,
-  title,
-  desc,
-}: {
-  icon: React.ReactNode;
-  title: string;
-  desc: string;
-}) {
+function Arrow({ dir = "right" }: { dir?: "right" | "down" }) {
+  const d = dir === "down" ? "M12 5v12M6 13l6 6 6-6" : "M5 12h12M13 6l6 6-6 6";
   return (
-    <div className="group relative overflow-hidden rounded-2xl border border-line bg-ink-900/50 p-6 transition hover:border-line-strong">
-      <div className="pointer-events-none absolute -inset-px opacity-0 transition group-hover:opacity-100">
-        <div className="absolute -left-8 -top-8 h-40 w-40 rounded-full bg-brand-600/15 blur-3xl" />
-      </div>
-      <div className="relative">
-        <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-brand-500/10 text-brand-300 ring-1 ring-inset ring-brand-500/20">
-          {icon}
-        </div>
-        <h3 className="mt-4 font-display text-base text-cream">{title}</h3>
-        <p className="mt-1.5 text-sm leading-relaxed text-muted text-pretty">
-          {desc}
-        </p>
-      </div>
-    </div>
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden>
+      <path d={d} stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
   );
 }
 
 export default function Landing() {
   const { t, locale, setLocale } = useI18n();
+  const heroRef = useRef<HTMLElement>(null);
+  const hallRef = useRef<HTMLElement>(null);
+  const trackRef = useRef<HTMLDivElement>(null);
+  const chromeRef = useRef<HTMLElement>(null);
+  const quoteRef = useRef<HTMLElement>(null);
+  const splitRef = useRef<HTMLElement>(null);
+  const closeRef = useRef<HTMLElement>(null);
+  const menuRef = useRef(false);
+  const scrollToRef = useRef<((y: number) => void) | null>(null);
+  const [leave, setLeave] = useState(false);
+  const [gone, setGone] = useState(false);
+  const [menu, setMenu] = useState(false);
 
-  const features = [
-    { icon: <Wand2 size={18} />, title: t("landing.f1Title"), desc: t("landing.f1Desc") },
-    { icon: <Eye size={18} />, title: t("landing.f2Title"), desc: t("landing.f2Desc") },
-    { icon: <ShieldCheck size={18} />, title: t("landing.f3Title"), desc: t("landing.f3Desc") },
-    { icon: <BarChart3 size={18} />, title: t("landing.f4Title"), desc: t("landing.f4Desc") },
-  ];
-  const steps = [
-    { icon: FileText, label: t("landing.step1"), desc: t("landing.step1Desc") },
-    { icon: Sparkles, label: t("landing.step2"), desc: t("landing.step2Desc") },
-    { icon: Megaphone, label: t("landing.step3"), desc: t("landing.step3Desc") },
-    { icon: Download, label: t("landing.step4"), desc: t("landing.step4Desc") },
-    { icon: BarChart3, label: t("landing.step5"), desc: t("landing.step5Desc") },
-  ];
+  useEffect(() => {
+    menuRef.current = menu;
+    document.body.style.overflow = menu ? "hidden" : "";
+    return () => {
+      document.body.style.overflow = "";
+    };
+  }, [menu]);
+
+  useEffect(() => {
+    const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    if (reduce) {
+      setGone(true);
+      return;
+    }
+    const t1 = window.setTimeout(() => setLeave(true), 980);
+    const t2 = window.setTimeout(() => setGone(true), 1980);
+    return () => {
+      window.clearTimeout(t1);
+      window.clearTimeout(t2);
+    };
+  }, []);
+
+  useEffect(() => {
+    const prevBg = document.body.style.background;
+    const prevScheme = document.documentElement.style.colorScheme;
+    document.body.style.background = "#f4f4ed";
+    document.documentElement.style.colorScheme = "light";
+    return () => {
+      document.body.style.background = prevBg;
+      document.documentElement.style.colorScheme = prevScheme;
+    };
+  }, []);
+
+  useEffect(() => {
+    const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    const hero = heroRef.current;
+    const sticky = hero?.querySelector<HTMLElement>(".mk-hero-sticky");
+    const hall = hallRef.current;
+    const track = trackRef.current;
+    const chrome = chromeRef.current;
+    let live = true;
+    let raf = 0;
+
+    const measure = () => {
+      if (!hall || !track || reduce) return;
+      const view = hall.querySelector<HTMLElement>(".mk-hall-sticky")?.clientWidth || window.innerWidth;
+      const max = Math.max(0, track.scrollWidth - view);
+      hall.style.height = `${window.innerHeight + max}px`;
+      hall.dataset.max = String(max);
+    };
+
+    const tick = () => {
+      if (hero && sticky && !reduce) {
+        const total = hero.offsetHeight - window.innerHeight;
+        const p = total > 0 ? Math.min(1, Math.max(0, -hero.getBoundingClientRect().top / total)) : 0;
+        hero.style.setProperty("--p", p.toFixed(4));
+        sticky.dataset.tone = p > 0.52 ? "dark" : "light";
+        sticky.dataset.phase = p > 0.16 ? "line" : "title";
+      }
+      const quote = quoteRef.current;
+      if (quote && !reduce) {
+        const rect = quote.getBoundingClientRect();
+        const center = rect.top + rect.height / 2 - window.innerHeight / 2;
+        const shift = Math.max(-64, Math.min(64, center * 0.07));
+        quote.style.setProperty("--shift", shift.toFixed(2));
+      }
+      if (hall && track && !reduce) {
+        const total = hall.offsetHeight - window.innerHeight;
+        const p = total > 0 ? Math.min(1, Math.max(0, -hall.getBoundingClientRect().top / total)) : 0;
+        const max = Number(hall.dataset.max || 0);
+        track.style.transform = `translate3d(${(-p * max).toFixed(2)}px,0,0)`;
+      }
+      if (chrome) {
+        if (menuRef.current) {
+          chrome.dataset.tone = "dark";
+        } else {
+          const hit = document.elementsFromPoint(window.innerWidth / 2, 96).find((el) => {
+            return !el.closest(".mk-chrome, .mk-menu, .mk-loader");
+          });
+          const zone = hit?.closest<HTMLElement>("[data-tone]");
+          chrome.dataset.tone = zone?.dataset.tone || "light";
+        }
+      }
+    };
+
+    const onScroll = () => {
+      if (!raf) {
+        raf = requestAnimationFrame(() => {
+          raf = 0;
+          if (live) tick();
+        });
+      }
+    };
+
+    measure();
+    tick();
+    window.addEventListener("scroll", onScroll, { passive: true });
+    window.addEventListener("resize", measure);
+    window.addEventListener("resize", onScroll);
+    document.fonts?.ready.then(() => {
+      if (!live) return;
+      measure();
+      tick();
+    });
+
+    const watch = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          if (entry.isIntersecting) entry.target.classList.add("is-in");
+        });
+      },
+      { threshold: 0.28 },
+    );
+    [quoteRef.current, splitRef.current, closeRef.current].forEach((el) => {
+      if (el) watch.observe(el);
+    });
+
+    return () => {
+      live = false;
+      cancelAnimationFrame(raf);
+      window.removeEventListener("scroll", onScroll);
+      window.removeEventListener("resize", measure);
+      window.removeEventListener("resize", onScroll);
+      watch.disconnect();
+    };
+  }, []);
+
+  useEffect(() => {
+    const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    const fine = window.matchMedia("(pointer: fine)").matches;
+    if (reduce || !fine) return;
+
+    let target = window.scrollY;
+    let current = window.scrollY;
+    let frame = 0;
+    let fromUs = false;
+    let last = performance.now();
+
+    const limit = () =>
+      Math.max(0, document.documentElement.scrollHeight - window.innerHeight);
+
+    const step = (now: number) => {
+      const dt = Math.min(34, now - last);
+      last = now;
+      const dest = Math.min(limit(), Math.max(0, target));
+      target = dest;
+      const gain = 1 - Math.pow(0.78, dt / 16.67);
+      current += (dest - current) * gain;
+      if (Math.abs(dest - current) < 0.35) current = dest;
+      fromUs = true;
+      window.scrollTo(0, current);
+      fromUs = false;
+      if (current !== dest) frame = requestAnimationFrame(step);
+      else frame = 0;
+    };
+
+    const kick = () => {
+      if (!frame) frame = requestAnimationFrame(step);
+    };
+
+    scrollToRef.current = (y: number) => {
+      target = y;
+      kick();
+    };
+
+    const onWheel = (event: WheelEvent) => {
+      if (event.ctrlKey) return;
+      event.preventDefault();
+      if (menuRef.current) return;
+      let dy = event.deltaY;
+      if (event.deltaMode === 1) dy *= 16;
+      if (event.deltaMode === 2) dy *= window.innerHeight;
+      target = Math.min(limit(), Math.max(0, target + dy));
+      kick();
+    };
+
+    const onKey = (event: KeyboardEvent) => {
+      if (menuRef.current) return;
+      const active = document.activeElement;
+      if (
+        active instanceof HTMLElement &&
+        active !== document.body &&
+        (active.tagName === "BUTTON" ||
+          active.tagName === "A" ||
+          active.tagName === "INPUT" ||
+          active.tagName === "TEXTAREA")
+      ) {
+        return;
+      }
+      const page = window.innerHeight * 0.86;
+      const amount =
+        event.key === "ArrowDown" ? 72
+        : event.key === "ArrowUp" ? -72
+        : event.key === "PageDown" ? page
+        : event.key === "PageUp" ? -page
+        : event.key === " " ? (event.shiftKey ? -page : page)
+        : null;
+      if (event.key === "Home") {
+        event.preventDefault();
+        target = 0;
+        kick();
+        return;
+      }
+      if (event.key === "End") {
+        event.preventDefault();
+        target = limit();
+        kick();
+        return;
+      }
+      if (amount == null) return;
+      event.preventDefault();
+      target = Math.min(limit(), Math.max(0, target + amount));
+      kick();
+    };
+
+    const onNativeScroll = () => {
+      if (fromUs) return;
+      current = target = window.scrollY;
+    };
+
+    const onClick = (event: MouseEvent) => {
+      if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
+      const link = (event.target as HTMLElement | null)?.closest('a[href^="#"]');
+      if (!link) return;
+      const id = link.getAttribute("href")?.slice(1);
+      const el = id ? document.getElementById(id) : null;
+      if (!el) return;
+      event.preventDefault();
+      target = el.getBoundingClientRect().top + window.scrollY;
+      kick();
+    };
+
+    window.addEventListener("wheel", onWheel, { passive: false });
+    window.addEventListener("keydown", onKey);
+    window.addEventListener("scroll", onNativeScroll, { passive: true });
+    document.addEventListener("click", onClick);
+    return () => {
+      scrollToRef.current = null;
+      cancelAnimationFrame(frame);
+      window.removeEventListener("wheel", onWheel);
+      window.removeEventListener("keydown", onKey);
+      window.removeEventListener("scroll", onNativeScroll);
+      document.removeEventListener("click", onClick);
+    };
+  }, []);
+
+  useEffect(() => {
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setMenu(false);
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, []);
+
+  const dismiss = () => {
+    setLeave(true);
+    window.setTimeout(() => setGone(true), 900);
+  };
+
+  const closeMenu = () => setMenu(false);
+
+  const frames = [
+    { name: t("landing.ch1"), kind: t("landing.ch1k"), tone: "cream" },
+    { name: t("landing.ch2"), kind: t("landing.ch2k"), tone: "lime" },
+    { name: t("landing.ch3"), kind: t("landing.ch3k"), tone: "olive" },
+    { name: t("landing.ch4"), kind: t("landing.ch4k"), tone: "ink" },
+  ] as const;
+
+  const steps = [1, 2, 3, 4, 5].map((n) => ({
+    n: String(n).padStart(2, "0"),
+    title: t(`landing.step${n}`),
+    desc: t(`landing.step${n}Desc`),
+  }));
+
+  const marquee = `${t("landing.marquee")}${t("landing.marquee")}`;
 
   return (
-    <div className="relative min-h-screen">
-      <PageAurora />
-      <div className="relative z-10 overflow-x-hidden">
-      {/* nav */}
-      <header className="sticky top-0 z-40 border-b border-line/60 bg-canvas/70 backdrop-blur-xl">
-        <div className="mx-auto flex h-16 max-w-6xl items-center justify-between px-5 lg:px-8">
-          <Logo size={30} />
-          <nav className="hidden items-center gap-7 text-sm text-muted md:flex">
-            <a href="#why" className="transition hover:text-cream">{t("landing.navWhy")}</a>
-            <a href="#features" className="transition hover:text-cream">{t("landing.navFeatures")}</a>
-            <a href="#flow" className="transition hover:text-cream">{t("landing.navFlow")}</a>
-          </nav>
-          <div className="flex items-center gap-2.5">
-            <LanguageSwitcher locale={locale} setLocale={setLocale} />
-            <Link
-              href="/login"
-              className="hidden rounded-lg px-3 py-2 text-sm font-medium text-muted transition hover:text-cream sm:block"
-            >
-              {t("landing.signin")}
-            </Link>
-            <Link
-              href="/login"
-              className="inline-flex items-center gap-1.5 rounded-lg bg-brand-600 px-3.5 py-2 text-sm font-semibold text-white ring-1 ring-inset ring-white/10 shadow-[0_8px_24px_-12px_rgba(94,106,210,0.9)] transition hover:bg-brand-500"
-            >
-              {t("landing.enter")} <ArrowRight size={15} />
-            </Link>
-          </div>
-        </div>
+    <div className="mk-home">
+      {gone ? null : (
+        <button
+          type="button"
+          className={`mk-loader${leave ? " is-leave" : ""}`}
+          onClick={dismiss}
+          aria-label={t("landing.skip")}
+        >
+          <span>Load Markestra</span>
+        </button>
+      )}
+
+      <header className="mk-chrome" ref={chromeRef} data-tone="light">
+        <Link href="/login" className="mk-pill">
+          <Arrow />
+          {t("landing.enter")}
+        </Link>
+        <button
+          type="button"
+          className="mk-menu-btn"
+          aria-expanded={menu}
+          aria-label={menu ? t("landing.close") : t("landing.menu")}
+          onClick={() => setMenu((open) => !open)}
+        >
+          <i className="mk-burger" />
+        </button>
       </header>
 
-      {/* hero */}
-      <section className="relative">
-        <div className="relative mx-auto max-w-6xl px-5 pb-16 pt-16 text-center lg:px-8 lg:pt-24">
-          <div className="rise mx-auto inline-flex items-center gap-2 rounded-full border border-line bg-ink-900/60 px-3.5 py-1.5 text-xs text-muted backdrop-blur">
-            <span className="flex h-1.5 items-end gap-0.5">
-              <span className="eq-bar inline-block h-2 w-0.5 bg-brand-400" style={{ animationDelay: "0ms" }} />
-              <span className="eq-bar inline-block h-3 w-0.5 bg-brand-400" style={{ animationDelay: "150ms" }} />
-              <span className="eq-bar inline-block h-1.5 w-0.5 bg-brand-400" style={{ animationDelay: "300ms" }} />
-            </span>
-            {t("landing.badge")}
+      <div className={`mk-menu${menu ? " is-open" : ""}`} data-tone="dark">
+        <nav>
+          <a className="mk-menu-link" href="#split" onClick={closeMenu}>{t("landing.splitShop")}</a>
+          <a className="mk-menu-link" href="#hall" onClick={closeMenu}>{t("landing.splitPromote")}</a>
+          <a className="mk-menu-link" href="#flow" onClick={closeMenu}>{t("landing.navFlow")}</a>
+          <Link className="mk-menu-link" href="/shop" onClick={closeMenu}>{t("landing.secondaryCta")}</Link>
+          <Link className="mk-menu-link" href="/login" onClick={closeMenu}>{t("landing.signin")}</Link>
+        </nav>
+        <div className="mk-menu-foot">
+          <button
+            type="button"
+            className="mk-lang"
+            aria-pressed={locale === "zh"}
+            onClick={() => setLocale("zh")}
+          >
+            中文
+          </button>
+          <button
+            type="button"
+            className="mk-lang"
+            aria-pressed={locale === "en"}
+            onClick={() => setLocale("en")}
+          >
+            English
+          </button>
+        </div>
+      </div>
+
+      <section className="mk-hero" ref={heroRef} data-tone="light">
+        <div className="mk-hero-sticky" data-tone="light">
+          <div className="mk-hero-wash" />
+          <Topo />
+          <Topo className="mk-topo-on-dark" />
+          <div className="mk-hero-copy">
+            <p className="mk-kicker">{t("landing.heroKicker")}</p>
+            <h1 className="mk-brand">
+              <img
+                className="mk-lockup"
+                src="/brand/logo-light.png"
+                alt={t("landing.heroGiant")}
+                width={888}
+                height={183}
+                draggable={false}
+              />
+            </h1>
+            <p className="mk-hero-line">{t("landing.heroLine")}</p>
           </div>
-
-          <h1 className="rise mx-auto mt-6 max-w-4xl font-display text-4xl leading-[1.08] text-cream text-balance sm:text-5xl lg:text-6xl" style={{ animationDelay: "60ms" }}>
-            {t("landing.heroTitleA")}{" "}
-            <span className="accent-gradient-text">{t("landing.heroTitleB")}</span>{" "}
-            {t("landing.heroTitleC")}
-          </h1>
-
-          <p className="rise mx-auto mt-5 max-w-2xl text-base leading-relaxed text-muted text-pretty" style={{ animationDelay: "120ms" }}>
-            {t("landing.heroSub")}
-          </p>
-
-          <div className="rise mt-8 flex flex-wrap items-center justify-center gap-3" style={{ animationDelay: "180ms" }}>
-            <Link
-              href="/login"
-              className="inline-flex items-center gap-2 rounded-xl bg-brand-600 px-5 py-3 text-sm font-semibold text-white ring-1 ring-inset ring-white/10 shadow-[0_12px_36px_-12px_rgba(94,106,210,0.9)] transition hover:bg-brand-500 active:scale-[.98]"
-            >
-              {t("landing.primaryCta")} <ArrowRight size={16} />
-            </Link>
-            <Link
-              href="/shop"
-              className="inline-flex items-center gap-2 rounded-xl border border-line bg-ink-900/50 px-5 py-3 text-sm font-semibold text-cream backdrop-blur transition hover:bg-ink-800"
-            >
-              {t("landing.secondaryCta")}
-            </Link>
+          <div className="mk-manifest">
+            <p>{t("landing.m1")}</p>
+            <p className="is-lime">{t("landing.m2")}</p>
+            <p>{t("landing.m3")}</p>
+            <p className="is-lime">{t("landing.m4")}</p>
           </div>
-
-          <p className="rise mt-5 text-xs text-subtle" style={{ animationDelay: "220ms" }}>
-            {t("landing.trust")}
-          </p>
-
-          <div className="rise mt-14" style={{ animationDelay: "280ms" }}>
-            <ProductPreview />
-          </div>
+          <Link href="/shop" className="mk-next">
+            <span className="mk-next-k">{t("landing.nextLabel")}</span>
+            <strong>{t("landing.nextName")}</strong>
+            <span className="mk-next-meta">{t("landing.nextMeta")}</span>
+          </Link>
+          <button
+            type="button"
+            className="mk-continue"
+            onClick={() => {
+              const el = quoteRef.current;
+              if (!el) return;
+              const y = el.getBoundingClientRect().top + window.scrollY;
+              if (scrollToRef.current) scrollToRef.current(y);
+              else window.scrollTo({ top: y, behavior: "smooth" });
+            }}
+          >
+            <span>{t("landing.continue")}</span>
+            <i className="mk-lime-btn">
+              <Arrow dir="down" />
+            </i>
+          </button>
         </div>
       </section>
 
-      {/* why */}
-      <section id="why" className="relative mx-auto max-w-6xl px-5 py-20 lg:px-8">
-        <h2 className="text-center font-display text-3xl text-cream text-balance">
-          {t("landing.whyTitle")}
-        </h2>
-        <div className="mx-auto mt-10 grid max-w-4xl gap-4 sm:grid-cols-2">
-          {[
-            { k: "Market", t: t("landing.whyMarket"), d: t("landing.whyMarketDesc") },
-            { k: "Orchestra", t: t("landing.whyOrchestra"), d: t("landing.whyOrchestraDesc") },
-          ].map((x) => (
-            <div key={x.k} className="rounded-2xl border border-line bg-ink-900/50 p-7">
-              <div className="font-display text-2xl accent-gradient-text">{x.t}</div>
-              <p className="mt-2 text-sm leading-relaxed text-muted text-pretty">{x.d}</p>
-            </div>
-          ))}
+      <section className="mk-quote" id="story" ref={quoteRef} data-tone="light">
+        <Topo />
+        <div className="mk-rise">
+          <p className="mk-poster-cap">{t("landing.posterCap")}</p>
+          <article className="mk-print">
+            <p className="mk-print-tag">{t("landing.posterTag")}</p>
+            <h3>{t("landing.posterName")}</h3>
+            <strong>{t("landing.posterPrice")}</strong>
+            <em>{t("landing.posterNote")}</em>
+          </article>
+        </div>
+        <div className="mk-rise">
+          <blockquote>{t("landing.quote")}</blockquote>
+          <p className="mk-quote-by">{t("landing.quoteBy")}</p>
         </div>
       </section>
 
-      {/* features */}
-      <section id="features" className="relative mx-auto max-w-6xl px-5 py-8 lg:px-8">
-        <div className="text-center">
-          <h2 className="font-display text-3xl text-cream text-balance">
-            {t("landing.featuresTitle")}
-          </h2>
-          <p className="mx-auto mt-3 max-w-xl text-sm text-muted text-pretty">
-            {t("landing.featuresSub")}
-          </p>
+      <div className="mk-marquee" data-tone="light" aria-hidden>
+        <div className="mk-marquee-track">
+          <span>{marquee}</span>
+          <span>{marquee}</span>
         </div>
-        <div className="mt-10 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          {features.map((f) => (
-            <Feature key={f.title} {...f} />
-          ))}
-        </div>
+      </div>
+
+      <section className="mk-split" id="split" ref={splitRef} data-tone="light">
+        <Topo />
+        <article className="mk-rise">
+          <p className="mk-split-k">{t("landing.splitShopK")}</p>
+          <h2>{t("landing.splitShop")}</h2>
+          <p>{t("landing.whyMarketDesc")}</p>
+          <Link href="/shop" className="mk-lime-btn" aria-label={t("landing.secondaryCta")}>
+            <Arrow />
+          </Link>
+        </article>
+        <article className="mk-rise">
+          <p className="mk-split-k">{t("landing.splitPromoteK")}</p>
+          <h2>{t("landing.splitPromote")}</h2>
+          <p>{t("landing.whyOrchestraDesc")}</p>
+          <a href="#hall" className="mk-lime-btn" aria-label={t("landing.splitPromote")}>
+            <Arrow />
+          </a>
+        </article>
       </section>
 
-      {/* flow */}
-      <section id="flow" className="relative mx-auto max-w-6xl px-5 py-20 lg:px-8">
-        <h2 className="text-center font-display text-3xl text-cream text-balance">
-          {t("landing.flowTitle")}
-        </h2>
-        <div className="relative mt-12">
-          <div className="absolute left-0 right-0 top-6 hidden h-px bg-gradient-to-r from-transparent via-line-strong to-transparent lg:block" />
-          <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-5">
-            {steps.map((s, i) => (
-              <div key={s.label} className="relative text-center">
-                <div className="relative z-10 mx-auto flex h-12 w-12 items-center justify-center rounded-xl border border-line bg-ink-850 text-brand-300 shadow-card">
-                  <s.icon size={18} />
+      <section className="mk-hall-intro" id="hall" data-tone="dark">
+        <Topo />
+        <p className="mk-hall-k">{t("landing.hallK")}</p>
+        <h2>{t("landing.hall")}</h2>
+        <p>{t("landing.hallSub")}</p>
+      </section>
+
+      <section className="mk-hall" ref={hallRef} data-tone="dark" aria-label={t("landing.hall")}>
+        <div className="mk-hall-sticky">
+          <div className="mk-hall-track" ref={trackRef}>
+            {frames.map((frame, index) => (
+              <article key={frame.name} className={`mk-frame mk-frame-${frame.tone}`}>
+                <div className="mk-tab">
+                  <span>{frame.name}</span>
+                  <span className="is-lime">{frame.kind}</span>
                 </div>
-                <div className="mt-3 font-display text-sm text-cream">
-                  <span className="text-subtle">{i + 1}. </span>
-                  {s.label}
+                <div className="mk-poster">
+                  <small>{t("landing.posterTag")}</small>
+                  <h3>{t("landing.posterName")}</h3>
+                  {index === 3 ? (
+                    <b className="mk-poster-index">04</b>
+                  ) : (
+                    <strong>{t("landing.posterPrice")}</strong>
+                  )}
                 </div>
-                <div className="mt-1 text-xs text-muted">{s.desc}</div>
-              </div>
+                <div className="mk-tab mk-tab-bottom">
+                  <span>{t("landing.posterNote")}</span>
+                  <span className="is-lime">2026</span>
+                </div>
+              </article>
             ))}
           </div>
         </div>
       </section>
 
-      {/* final CTA */}
-      <section className="relative mx-auto max-w-6xl px-5 pb-24 lg:px-8">
-        <div className="relative overflow-hidden rounded-3xl border border-line bg-ink-900 p-10 text-center grain lg:p-16">
-          <div className="glowfield opacity-90" />
-          <div className="relative">
-            <h2 className="mx-auto max-w-2xl font-display text-3xl text-cream text-balance lg:text-4xl">
-              {t("landing.finalTitle")}
-            </h2>
-            <p className="mx-auto mt-3 max-w-lg text-sm text-muted text-pretty">
-              {t("landing.finalSub")}
-            </p>
-            <div className="mt-7 flex justify-center">
-              <Link
-                href="/login"
-                className="inline-flex items-center gap-2 rounded-xl bg-brand-600 px-6 py-3 text-sm font-semibold text-white ring-1 ring-inset ring-white/10 shadow-[0_12px_36px_-12px_rgba(94,106,210,0.9)] transition hover:bg-brand-500 active:scale-[.98]"
-              >
-                {t("landing.primaryCta")} <ArrowRight size={16} />
-              </Link>
-            </div>
-          </div>
-        </div>
+      <section className="mk-flow-sec" id="flow" data-tone="light">
+        <h2>{t("landing.flowTitle")}</h2>
+        <ol className="mk-flow">
+          {steps.map((step) => (
+            <li key={step.n}>
+              <span className="mk-flow-n">{step.n}</span>
+              <div>
+                <h3>{step.title}</h3>
+                <p>{step.desc}</p>
+              </div>
+            </li>
+          ))}
+        </ol>
       </section>
 
-      {/* footer */}
-      <footer className="border-t border-line">
-        <div className="mx-auto flex max-w-6xl flex-col items-center justify-between gap-4 px-5 py-8 text-sm text-subtle sm:flex-row lg:px-8">
-          <Logo size={26} />
-          <p className="text-pretty">{t("landing.footer")}</p>
-          <p>© {new Date().getFullYear()} Markestra</p>
+      <section className="mk-close" ref={closeRef} data-tone="dark">
+        <Topo />
+        <h2 className="mk-rise">
+          {t("landing.closeK")}
+          <br />
+          <em>{t("landing.closeH")}</em>
+        </h2>
+        <div className="mk-close-row mk-rise">
+          <Link href="/login" className="mk-pill">
+            <Arrow />
+            {t("landing.primaryCta")}
+          </Link>
+          <p>{t("landing.finalSub")}</p>
         </div>
-      </footer>
-      </div>
+        <footer className="mk-foot">
+          <Logo variant="dark" className="mk-foot-logo" />
+          <nav>
+            <Link href="/shop">{t("landing.secondaryCta")}</Link>
+            <Link href="/login">{t("landing.signin")}</Link>
+            <a href="#flow">{t("landing.navFlow")}</a>
+          </nav>
+          <span>© {new Date().getFullYear()} Markestra</span>
+        </footer>
+      </section>
     </div>
   );
 }

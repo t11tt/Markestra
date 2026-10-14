@@ -6,7 +6,6 @@ import { useRouter } from "next/navigation";
 import { ArrowRight, ArrowLeft } from "lucide-react";
 import { useI18n } from "@/lib/i18n";
 import { Logo, Mark } from "@/components/logo";
-import { PageAurora } from "@/components/page-aurora";
 import { LineRhythm } from "@/components/line-rhythm";
 import { Button, Field, Input, LanguageSwitcher } from "@/components/ui";
 
@@ -50,8 +49,7 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="relative min-h-screen overflow-hidden">
-      <PageAurora className="page-aurora-pane" />
+    <div className="mk-skin relative min-h-screen overflow-hidden">
       <div className="relative z-10 grid min-h-screen lg:grid-cols-2">
       <div className="login-seam hidden lg:block" aria-hidden />
       {/* form side */}
@@ -67,7 +65,7 @@ export default function LoginPage() {
         </div>
 
         <div className="mx-auto flex w-full max-w-sm flex-1 flex-col justify-center py-10">
-          <Logo size={34} />
+          <Logo className="h-12" />
           <h1 className="mt-8 font-display text-3xl text-cream text-balance">
             {t("login.title")}
           </h1>
@@ -140,7 +138,7 @@ export default function LoginPage() {
         <LineRhythm className="pointer-events-none absolute inset-0 h-full w-full opacity-55" />
         <div className="relative flex h-full flex-col justify-between p-12">
           <div className="flex items-center gap-2 text-sm text-muted">
-            <Mark size={22} glow /> market · orchestra
+            <Mark /> market · orchestra
           </div>
 
           <div>

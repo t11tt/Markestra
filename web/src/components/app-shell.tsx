@@ -17,7 +17,6 @@ import {
 import { useStore } from "@/lib/store";
 import { useI18n } from "@/lib/i18n";
 import { Logo } from "@/components/logo";
-import { PageAurora } from "@/components/page-aurora";
 import { LanguageSwitcher } from "@/components/ui";
 
 const nav = [
@@ -62,7 +61,7 @@ function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
     <div className="relative z-10 flex h-full flex-col">
       <div className="px-5 py-5">
         <Link href="/dashboard" onClick={onNavigate}>
-          <Logo size={34} />
+          <Logo className="h-9" />
         </Link>
       </div>
 
@@ -141,7 +140,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
   if (!hydrated) {
     return (
-      <div className="app-stage flex min-h-screen flex-col items-center justify-center gap-4 px-6 text-center">
+      <div className="mk-skin app-stage flex min-h-screen flex-col items-center justify-center gap-4 px-6 text-center">
         <p className="text-sm text-muted">{error ?? "正在读取工作区…"}</p>
         {error && (
           <button
@@ -156,13 +155,8 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   }
 
   return (
-    <div className="app-stage relative flex min-h-screen">
-      <PageAurora className="page-aurora-soft" />
+    <div className="mk-skin app-stage relative flex min-h-screen">
       <aside className="app-glass sticky top-0 z-20 hidden h-screen w-64 shrink-0 overflow-hidden border-r border-white/10 lg:block">
-        <div className="aside-wash" aria-hidden>
-          <span className="wash-a" />
-          <span className="wash-b" />
-        </div>
         <SidebarContent />
       </aside>
 
@@ -173,10 +167,6 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             onClick={() => setMobileOpen(false)}
           />
           <div className="app-glass absolute left-0 top-0 h-full w-64 overflow-hidden border-r border-white/10 shadow-xl animate-in">
-            <div className="aside-wash" aria-hidden>
-              <span className="wash-a" />
-              <span className="wash-b" />
-            </div>
             <button
               className="absolute right-3 top-4 rounded-lg p-1.5 text-subtle hover:bg-ink-800"
               onClick={() => setMobileOpen(false)}

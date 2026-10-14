@@ -62,6 +62,14 @@
   font-display: swap;
 }
 
+@font-face {
+  font-family: "Mona Sans";
+  src: url("/fonts/mona-sans.woff2") format("woff2");
+  font-weight: 200 900;
+  font-style: normal;
+  font-display: swap;
+}
+
 .font-brand {
   font-family: var(--font-brand);
   font-weight: 600;
@@ -112,7 +120,6 @@ body {
     linear-gradient(180deg, rgba(255, 255, 255, 0.06), rgba(255, 255, 255, 0.02)),
     rgba(16, 18, 28, 0.52);
   backdrop-filter: blur(18px) saturate(1.25);
-  -webkit-backdrop-filter: blur(18px) saturate(1.25);
   border: 1px solid rgba(255, 255, 255, 0.08);
   border-radius: 14px;
   box-shadow: var(--shadow-card);
@@ -122,7 +129,6 @@ body {
 .glass {
   background: rgba(255, 255, 255, 0.025);
   backdrop-filter: blur(14px);
-  -webkit-backdrop-filter: blur(14px);
   border: 1px solid var(--color-line);
 }
 
@@ -205,7 +211,6 @@ body {
 .app-glass {
   background: rgba(12, 14, 22, 0.42);
   backdrop-filter: blur(28px) saturate(1.4);
-  -webkit-backdrop-filter: blur(28px) saturate(1.4);
 }
 .aside-wash {
   position: absolute;
@@ -571,4 +576,134 @@ body {
     animation-iteration-count: 1 !important;
     transition-duration: 0.001ms !important;
   }
+}
+
+/* Intro-page skin for everything after the landing.
+   The sliding nav pill (.nav-liquid) and the glass blur amounts stay as they are. */
+.mk-skin .font-brand {
+  font-family: "Mona Sans", "Noto Sans SC", sans-serif;
+  font-weight: 650;
+  letter-spacing: -0.04em;
+}
+
+.mk-skin {
+  color-scheme: light;
+  --color-canvas: #f4f4ed;
+  --color-panel: #f7f7f1;
+  --color-elevated: #fbfbf6;
+  --color-cream: #282c20;
+  --color-muted: #5c6250;
+  --color-subtle: #8a9078;
+  --color-line: rgba(40, 44, 32, 0.14);
+  --color-line-strong: rgba(40, 44, 32, 0.24);
+  --color-ink-950: #e8e8df;
+  --color-ink-900: #f7f7f1;
+  --color-ink-850: #f4f4ed;
+  --color-ink-800: #e4e4da;
+  --color-ink-700: #d8d8cc;
+  --color-ink-600: #b7b7a8;
+  --color-ink-500: #8a9078;
+  --color-brand-50: #f6f8e8;
+  --color-brand-100: #e7efb0;
+  --color-brand-200: #3d4a22;
+  --color-brand-300: #3f4f12;
+  --color-brand-400: #546014;
+  --color-brand-500: #c6ef00;
+  --color-brand-600: #d2ff00;
+  --color-brand-700: #282c20;
+  --color-brand-800: #1c2014;
+  --color-brand-900: #10110e;
+  background: #f4f4ed;
+  color: #282c20;
+  font-family: "Mona Sans", "Noto Sans SC", "PingFang SC", "Microsoft YaHei",
+    sans-serif;
+  scrollbar-color: rgba(40, 44, 32, 0.28) transparent;
+}
+
+.mk-skin.app-stage,
+.mk-skin .app-stage {
+  background: #f4f4ed;
+  color: #282c20;
+}
+
+.mk-skin.app-stage::before,
+.mk-skin .app-stage::before {
+  background:
+    radial-gradient(880px 520px at 0% -10%, rgba(210, 255, 0, 0.22), transparent 58%),
+    radial-gradient(720px 480px at 100% 0%, rgba(40, 44, 32, 0.05), transparent 60%),
+    #f4f4ed;
+}
+
+.mk-skin .app-glass {
+  background: rgba(244, 244, 237, 0.62);
+  backdrop-filter: blur(28px) saturate(1.4);
+}
+
+.mk-skin .page-aurora,
+.mk-skin .aside-wash,
+.mk-skin .glowfield {
+  display: none;
+}
+
+.mk-skin .card {
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.72), rgba(244, 244, 237, 0.78));
+  border: 1px solid rgba(40, 44, 32, 0.12);
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.7) inset,
+    0 18px 40px -28px rgba(40, 44, 32, 0.45);
+}
+
+.mk-skin .glass {
+  background: rgba(244, 244, 237, 0.55);
+  border-color: rgba(40, 44, 32, 0.12);
+}
+
+.mk-skin [class~="bg-brand-600"],
+.mk-skin [class~="bg-brand-500"] {
+  color: #282c20;
+}
+
+.mk-skin [class~="bg-brand-600"] [class*="text-white"],
+.mk-skin [class~="bg-brand-500"] [class*="text-white"] {
+  color: #282c20;
+}
+
+.mk-skin [class~="border-white/10"] {
+  border-color: rgba(40, 44, 32, 0.14);
+}
+
+.mk-skin [class~="bg-white/[0.04]"],
+.mk-skin [class~="bg-white/[0.03]"] {
+  background-color: rgba(40, 44, 32, 0.04);
+}
+
+.mk-skin [class~="ring-white/10"] {
+  --tw-ring-color: rgba(40, 44, 32, 0.12);
+}
+
+.mk-skin .from-brand-300.to-brand-600,
+.mk-skin .from-brand-400.to-brand-700 {
+  background-image: none;
+  background-color: #282c20;
+  color: #d2ff00;
+}
+
+.mk-skin .login-seam {
+  background: linear-gradient(
+    to bottom,
+    transparent,
+    rgba(40, 44, 32, 0.08) 16%,
+    rgba(40, 44, 32, 0.28) 50%,
+    rgba(40, 44, 32, 0.08) 84%,
+    transparent
+  );
+}
+
+.mk-skin .login-seam::before {
+  background: linear-gradient(
+    to bottom,
+    transparent,
+    rgba(210, 255, 0, 0.45),
+    transparent
+  );
 }

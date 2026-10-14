@@ -38,14 +38,14 @@ export function LineRhythm({ className = "" }: { className?: string }) {
     >
       <defs>
         <linearGradient id="lr-fade" x1="0" y1="0" x2="1" y2="0" gradientUnits="objectBoundingBox">
-          <stop offset="0" stopColor="#5e6ad2" stopOpacity="0" />
-          <stop offset="0.5" stopColor="#8b93f2" stopOpacity="1" />
-          <stop offset="1" stopColor="#5e6ad2" stopOpacity="0" />
+          <stop offset="0" stopColor="#282c20" stopOpacity="0" />
+          <stop offset="0.5" stopColor="#282c20" stopOpacity="1" />
+          <stop offset="1" stopColor="#282c20" stopOpacity="0" />
         </linearGradient>
         <linearGradient id="lr-accent" x1="0" y1="0" x2="1" y2="0" gradientUnits="objectBoundingBox">
-          <stop offset="0" stopColor="#a5adff" stopOpacity="0" />
-          <stop offset="0.5" stopColor="#c6ccff" stopOpacity="1" />
-          <stop offset="1" stopColor="#a5adff" stopOpacity="0" />
+          <stop offset="0" stopColor="#d2ff00" stopOpacity="0" />
+          <stop offset="0.5" stopColor="#d2ff00" stopOpacity="1" />
+          <stop offset="1" stopColor="#d2ff00" stopOpacity="0" />
         </linearGradient>
       </defs>
 
