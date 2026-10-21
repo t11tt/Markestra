@@ -1,5 +1,6 @@
 import type { Brand, Campaign, Product } from "@prisma/client";
 import { displayImage } from "@/lib/image";
+import { isPosterStyle } from "@/lib/poster-templates";
 import type {
   Brand as BrandDto,
   Campaign as CampaignDto,
@@ -35,6 +36,7 @@ export function mapProduct(row: Product): ProductDto {
     description: row.description,
     image: displayImage(row.image),
     listed: row.listed,
+    stock: row.stock,
   };
 }
 
@@ -83,6 +85,7 @@ function asMetrics(value: unknown): CampaignDto["metrics"] {
 
 export function mapCampaign(row: Campaign): CampaignDto {
   return {
+    posterStyle: isPosterStyle(row.posterStyle) ? row.posterStyle : "tea",
     id: row.id,
     code: row.code,
     name: row.name,

@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
+import { BrandHome } from "@/components/logo";
 import { Minus, Plus, ShoppingBag } from "lucide-react";
 import { useI18n } from "@/lib/i18n";
 import { Button, Field, Input } from "@/components/ui";
@@ -27,6 +28,7 @@ export default function ShopPage() {
   const [catalog, setCatalog] = useState<ShopCatalog | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [qty, setQty] = useState<Record<string, number>>({});
+  const [cartReady, setCartReady] = useState(false);
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
   const [fulfillment, setFulfillment] = useState<ShopFulfillment>("pickup");
@@ -51,6 +53,19 @@ export default function ShopPage() {
       });
   }, [slug, t]);
 
+  useEffect(() => {
+    let live = true;
+    queueMicrotask(() => {
+    if (!live) return;
+    try { const saved=JSON.parse(localStorage.getItem(`markestra-cart:${slug}`) || "{}");
+      if(saved && typeof saved === "object") setQty(Object.fromEntries(Object.entries(saved).filter(([,v])=>typeof v === "number" && Number.isInteger(v) && v>0 && v<=99)) as Record<string,number>);
+    } catch { /* Ignore a damaged local cart. */ }
+    setCartReady(true);
+    });
+    return () => { live = false; };
+  }, [slug]);
+  useEffect(() => { if(cartReady) { try { localStorage.setItem(`markestra-cart:${slug}`,JSON.stringify(qty)); } catch { /* Storage may be unavailable in private mode. */ } } }, [qty,slug,cartReady]);
+
   const lines = useMemo(() => {
     if (!catalog) return [];
     return catalog.products
@@ -61,7 +76,7 @@ export default function ShopPage() {
   const total = lines.reduce((sum, line) => sum + line.product.price * line.qty, 0);
 
   const change = (product: ShopProduct, next: number) => {
-    setQty((current) => ({ ...current, [product.id]: Math.max(0, Math.min(99, next)) }));
+    setQty((current) => ({ ...current, [product.id]: Math.max(0, Math.min(99, product.stock, next)) }));
   };
 
   const submit = async () => {
@@ -86,6 +101,7 @@ export default function ShopPage() {
       if (!res.ok) throw new Error(body.error || t("shop.orderError"));
       setOrder(body);
       setQty({});
+      void fetch(`/api/shop?slug=${encodeURIComponent(slug)}`).then((res)=>res.json()).then(setCatalog);
     } catch (err) {
       setError(err instanceof Error ? err.message : t("shop.orderError"));
     } finally {
@@ -104,6 +120,7 @@ export default function ShopPage() {
           <Link href="/dashboard" className="text-sm font-medium text-muted transition hover:text-cream">
             {t("shop.backstage")}
           </Link>
+          <BrandHome />
         </div>
       </header>
 
@@ -132,6 +149,7 @@ export default function ShopPage() {
                   </div>
                   <div className="min-w-0 flex-1">
                     <h2 className="font-semibold text-cream">{product.name}</h2>
+                    <p className="mt-1 text-xs text-subtle">{product.stock > 0 ? `库存 ${product.stock}` : "已售罄"}</p>
                     <p className="mt-1 text-sm leading-relaxed text-muted">{product.description}</p>
                     {product.offer && (
                       <p className="mt-1 text-xs text-brand-300">
@@ -158,6 +176,7 @@ export default function ShopPage() {
                     <button
                       type="button"
                       aria-label={t("shop.more")}
+                      disabled={current >= product.stock || current >= 99}
                       onClick={() => change(product, current + 1)}
                       className="flex h-8 w-8 items-center justify-center rounded-lg bg-brand-600 text-white ring-1 ring-inset ring-white/10 transition hover:bg-brand-500"
                     >

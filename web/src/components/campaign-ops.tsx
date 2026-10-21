@@ -86,10 +86,10 @@ export function CampaignOps({
   }, [campaignId, t]);
 
   useEffect(() => {
-    void load();
+    const timer = window.setTimeout(() => void load(), 0);
     const onChange = () => void load();
     window.addEventListener("markestra-ops", onChange);
-    return () => window.removeEventListener("markestra-ops", onChange);
+    return () => { window.clearTimeout(timer); window.removeEventListener("markestra-ops", onChange); };
   }, [load]);
 
   async function post(body: object) {

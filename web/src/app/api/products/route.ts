@@ -18,6 +18,8 @@ export async function POST(request: Request) {
   const originalPrice = body.originalPrice == null || body.originalPrice === ""
     ? null
     : money(body.originalPrice);
+  const stock = body.stock === undefined ? 100 : body.stock;
+  if (typeof stock !== "number" || !Number.isSafeInteger(stock) || stock < 0 || stock > 1000000) return jsonError("库存必须是 0 到 1000000 的整数");
   let image: string | null = null;
   if (typeof body.image === "string") {
     try {
@@ -41,6 +43,7 @@ export async function POST(request: Request) {
         name,
         description,
         price,
+        stock,
         originalPrice,
         image,
       },

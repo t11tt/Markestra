@@ -23,6 +23,7 @@ export async function PATCH(
     originalPrice?: number | null;
     image?: string | null;
     listed?: boolean;
+    stock?: number;
   } = {};
   if (typeof body.name === "string" && body.name.trim()) data.name = body.name.trim();
   if (typeof body.description === "string") data.description = body.description.trim();
@@ -46,6 +47,10 @@ export async function PATCH(
       if (error instanceof ImageError) return jsonError(error.message);
       throw error;
     }
+  }
+  if ("stock" in body) {
+    if (typeof body.stock !== "number" || !Number.isSafeInteger(body.stock) || body.stock < 0 || body.stock > 1000000) return jsonError("库存必须是 0 到 1000000 的整数");
+    data.stock = body.stock;
   }
   if (typeof body.listed === "boolean") data.listed = body.listed;
   if (Object.keys(data).length === 0) return jsonError("没有可保存的修改");

@@ -54,6 +54,7 @@ export interface Product {
   description: string;
   image?: string; // file URL or emoji
   listed: boolean;
+  stock: number;
 }
 
 export interface ShopOffer {
@@ -62,6 +63,7 @@ export interface ShopOffer {
 }
 
 export interface ShopProduct {
+  stock: number;
   id: string;
   name: string;
   description: string;
@@ -110,6 +112,7 @@ export interface ChannelContent {
 }
 
 export interface Campaign {
+  posterStyle?: import("./poster-templates").PosterStyle;
   id: string;
   code: string; // 活动编号
   name: string;

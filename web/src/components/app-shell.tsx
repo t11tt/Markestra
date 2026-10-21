@@ -16,8 +16,10 @@ import {
 } from "lucide-react";
 import { useStore } from "@/lib/store";
 import { useI18n } from "@/lib/i18n";
-import { Logo } from "@/components/logo";
+import { Logo, BrandHome } from "@/components/logo";
 import { LanguageSwitcher } from "@/components/ui";
+import { WorkspaceBackdrop } from "@/components/workspace-backdrop";
+import "@/app/workspace.css";
 
 const nav = [
   { href: "/dashboard", key: "nav.overview", icon: LayoutGrid, exact: true },
@@ -49,8 +51,7 @@ function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
       }
       const rootBox = root.getBoundingClientRect();
       const box = active.getBoundingClientRect();
-      const pad = Number.parseFloat(getComputedStyle(root).paddingTop) || 0;
-      setPill({ top: box.top - rootBox.top - pad, height: box.height });
+      setPill({ top: box.top - rootBox.top, height: box.height });
     };
     measure();
     window.addEventListener("resize", measure);
@@ -59,7 +60,7 @@ function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
 
   return (
     <div className="relative z-10 flex h-full flex-col">
-      <div className="px-5 py-5">
+      <div className="sidebar-brand px-5 py-5">
         <Link href="/dashboard" onClick={onNavigate}>
           <Logo className="h-9" />
         </Link>
@@ -69,13 +70,13 @@ function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
         <Link
           href="/campaigns/new"
           onClick={onNavigate}
-          className="flex w-full items-center justify-center gap-2 rounded-xl bg-brand-600 px-4 py-2.5 text-sm font-semibold text-white shadow-[0_10px_30px_-14px_rgba(94,106,210,0.9)] ring-1 ring-inset ring-white/10 transition hover:bg-brand-500 active:scale-[.98]"
+          className="sidebar-create flex w-full items-center justify-center gap-2 rounded-xl bg-brand-600 px-4 py-2.5 text-sm font-semibold text-white ring-1 ring-inset ring-white/10 transition hover:bg-brand-500 active:scale-[.98]"
         >
           <Plus size={16} /> {t("nav.create")}
         </Link>
       </div>
 
-      <nav ref={navRef} className="relative flex-1 space-y-1 px-3 py-2">
+      <nav ref={navRef} className="sidebar-nav relative flex-1 space-y-1 px-3 py-2">
         {pill && (
           <span className="nav-liquid" style={{ top: pill.top, height: pill.height }} />
         )}
@@ -102,8 +103,8 @@ function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
         })}
       </nav>
 
-      <div className="p-3">
-        <div className="relative overflow-hidden rounded-2xl border border-white/10 bg-white/[0.04] p-4 backdrop-blur-md">
+      <div className="sidebar-foot p-3">
+        <div className="sidebar-quota relative overflow-hidden rounded-2xl border border-white/10 bg-white/[0.04] p-4 backdrop-blur-md">
           <div className="flex items-center gap-2 text-sm font-semibold text-cream">
             <span className="flex h-1.5 items-end gap-0.5">
               <span className="eq-bar inline-block h-2 w-0.5 bg-brand-400" style={{ animationDelay: "0ms" }} />
@@ -155,8 +156,9 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   }
 
   return (
-    <div className="mk-skin app-stage relative flex min-h-screen">
-      <aside className="app-glass sticky top-0 z-20 hidden h-screen w-64 shrink-0 overflow-hidden border-r border-white/10 lg:block">
+    <div className="mk-skin app-stage workspace relative flex min-h-screen">
+      <WorkspaceBackdrop />
+      <aside className="workspace-sidebar app-glass sticky top-0 z-20 hidden h-screen w-64 shrink-0 overflow-hidden border-r border-white/10 lg:block">
         <SidebarContent />
       </aside>
 
@@ -166,9 +168,10 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             className="absolute inset-0 bg-black/60 backdrop-blur-sm"
             onClick={() => setMobileOpen(false)}
           />
-          <div className="app-glass absolute left-0 top-0 h-full w-64 overflow-hidden border-r border-white/10 shadow-xl animate-in">
+          <div className="mobile-sheet app-glass absolute left-0 top-0 h-full w-64 overflow-hidden border-r border-white/10 shadow-xl">
             <button
               className="absolute right-3 top-4 rounded-lg p-1.5 text-subtle hover:bg-ink-800"
+              aria-label={locale === "zh" ? "关闭导航" : "Close navigation"}
               onClick={() => setMobileOpen(false)}
             >
               <X size={18} />
@@ -178,15 +181,18 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         </div>
       )}
 
-      <div className="app-glass relative z-10 flex min-w-0 flex-1 flex-col">
-        <header className="sticky top-0 z-30 flex h-16 items-center gap-3 border-b border-white/10 bg-white/[0.03] px-4 backdrop-blur-xl lg:px-6">
+      <div className="workspace-content relative z-10 flex min-w-0 flex-1 flex-col">
+        <header className="workspace-header sticky top-0 z-30 flex h-16 items-center gap-3 border-b border-white/10 bg-white/[0.03] px-4 backdrop-blur-xl lg:px-6">
           <button
             className="rounded-lg p-2 text-muted hover:bg-ink-800 lg:hidden"
+            aria-label={locale === "zh" ? "打开导航" : "Open navigation"}
+            aria-expanded={mobileOpen}
             onClick={() => setMobileOpen(true)}
           >
             <Menu size={20} />
           </button>
 
+          <div className="workspace-breadcrumb"><span>WORKSPACE</span><i /><span>{t(nav.find((item) => isActive(pathname, item.href, item.exact))?.key || "nav.workspace")}</span></div>
           <div className="flex flex-1 items-center justify-end gap-2">
             <LanguageSwitcher locale={locale} setLocale={setLocale} />
             <div className="flex items-center gap-2 rounded-xl px-2 py-1.5">
@@ -214,6 +220,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             >
               <LogOut size={16} />
             </button>
+            <BrandHome />
           </div>
         </header>
 

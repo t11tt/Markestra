@@ -86,7 +86,7 @@ const zh: Dict = {
   "landing.footer": "商家自己的网店，宣传接在同一家店上。",
   "landing.heroKicker": "market · orchestra",
   "landing.heroGiant": "Markestra",
-  "landing.heroLine": "货架与宣传，共用一份资料",
+  "landing.heroLine": "开网店用的操作系统 · 从商品到每一次被看见",
   "landing.m1": "把货架上的",
   "landing.m2": "价格",
   "landing.m3": "写成宣传，再放回",
@@ -254,7 +254,7 @@ const zh: Dict = {
   "wb.toastCopied": "文案已复制到剪贴板",
   "wb.toastDownload": "海报已下载，文件与预览一致",
   "wb.poster": "海报",
-  "wb.posterHint": "用你上传的商品照片、类别、促销方式和意愿在本地排版。下载的 PNG 与这张预览是同一张图。",
+  "wb.posterHint": "选择照片海报风格，调整主标题，再导出 1080 × 1440 高清 PNG。使用你上传的实拍，不生成虚构的商品照片。",
   "wb.posterCut": "文字较长，海报里已截断。缩短标题或商品说明后再下载。",
   "ops.exportTitle": "导出记录",
   "ops.exportHint": "下载会记下当时确认的那一版文案、活动价，并保存海报。",
@@ -292,7 +292,7 @@ const zh: Dict = {
   "wb.toastPublished": "已标记为已发布，可回来记录结果",
   "wb.genFailed": "生成失败，请重试",
   "wb.retry": "重试生成",
-  "wb.mockNote": "未配置千问密钥，这次用的是本地演示生成，结果已保存。",
+  "wb.mockNote": "未配置 DeepSeek 密钥，这次用的是本地演示生成，结果已保存。",
   "wb.versions": "之前的版本",
   "wb.restore": "找回",
   "wb.toastRestored": "已找回这一版，当前确认状态已取消",
@@ -467,7 +467,7 @@ const en: Dict = {
   "landing.footer": "The merchant’s own shop, with promotion attached to it.",
   "landing.heroKicker": "market · orchestra",
   "landing.heroGiant": "Markestra",
-  "landing.heroLine": "The shelf and the campaign share one record",
+  "landing.heroLine": "Your store operating system. From products to being discovered.",
   "landing.m1": "Take the shelf",
   "landing.m2": "price",
   "landing.m3": "into the campaign, then back to",
@@ -668,7 +668,7 @@ const en: Dict = {
   "wb.toastPublished": "Marked as published — come back to log results",
   "wb.genFailed": "Generation failed. Try again.",
   "wb.retry": "Retry generation",
-  "wb.mockNote": "No Qwen key is configured, so this run used the local demo generator. The result is saved.",
+  "wb.mockNote": "No DeepSeek key is configured, so this run used the local demo generator. The result is saved.",
   "wb.versions": "Earlier versions",
   "wb.restore": "Restore",
   "wb.toastRestored": "Restored this version. It needs confirmation again.",
@@ -786,7 +786,8 @@ export function LocaleProvider({ children }: { children: React.ReactNode }) {
     const saved = (typeof window !== "undefined" &&
       (localStorage.getItem("markestra-locale") as Locale)) as Locale | null;
     if (saved === "zh" || saved === "en") {
-      setLocaleState(saved);
+      const timer = window.setTimeout(() => setLocaleState(saved), 0);
+      return () => window.clearTimeout(timer);
     }
   }, []);
 

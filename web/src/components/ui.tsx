@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { ButtonHTMLAttributes, ReactNode } from "react";
+import { ButtonHTMLAttributes, CSSProperties, ReactNode } from "react";
 
 type Tone = "gray" | "amber" | "blue" | "green" | "red";
 
@@ -63,7 +63,7 @@ export function Button({
   children,
   ...rest
 }: BtnProps) {
-  const cls = `inline-flex items-center justify-center gap-2 rounded-xl font-medium transition-all disabled:opacity-40 disabled:pointer-events-none ${
+  const cls = `workspace-button workspace-button-${variant} inline-flex items-center justify-center gap-2 rounded-xl font-medium transition-all disabled:opacity-40 disabled:pointer-events-none ${
     size === "sm" ? "px-3 py-1.5 text-sm" : "px-4 py-2.5 text-sm"
   } ${btnMap[variant]} ${className}`;
   if (href) {
@@ -86,13 +86,22 @@ export function Card({
   children,
   className = "",
   as = "div",
+  style,
 }: {
   children: ReactNode;
   className?: string;
   as?: "div" | "section";
+  style?: CSSProperties;
 }) {
   const Tag = as;
-  return <Tag className={`card ${className}`}>{children}</Tag>;
+  return (
+    <Tag className={`card ${className}`} style={style} onPointerMove={(event) => {
+      if (event.pointerType !== "mouse" || window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+      const box = event.currentTarget.getBoundingClientRect();
+      event.currentTarget.style.setProperty("--glass-x", `${event.clientX - box.left}px`);
+      event.currentTarget.style.setProperty("--glass-y", `${event.clientY - box.top}px`);
+    }}>{children}</Tag>
+  );
 }
 
 export function Field({
@@ -138,7 +147,7 @@ export function Textarea(
 
 export function PageContainer({ children }: { children: ReactNode }) {
   return (
-    <div className="mx-auto w-full max-w-6xl px-4 py-6 lg:px-8 lg:py-9">
+    <div className="workspace-page mx-auto w-full max-w-6xl px-4 py-6 lg:px-8 lg:py-9">
       {children}
     </div>
   );
@@ -156,7 +165,8 @@ export function PageHeader({
   back?: { href: string; label: string };
 }) {
   return (
-    <div className="mb-7">
+    <div className="page-header mb-7">
+      <div className="page-eyebrow" aria-hidden="true">MARKESTRA / YOUR STORE, IN SYNC</div>
       {back && (
         <Link
           href={back.href}
@@ -167,11 +177,11 @@ export function PageHeader({
       )}
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="font-display text-[26px] leading-tight text-cream text-balance">
+          <h1 className="page-heading font-display text-[26px] leading-tight text-cream text-balance">
             {title}
           </h1>
           {subtitle && (
-            <p className="mt-1.5 max-w-2xl text-sm text-muted text-pretty">
+            <p className="page-description mt-1.5 max-w-2xl text-sm text-muted text-pretty">
               {subtitle}
             </p>
           )}

@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { useI18n } from "@/lib/i18n";
-import { Logo } from "@/components/logo";
+import { Logo, BrandHome } from "@/components/logo";
 import "./landing.css";
 
 function Topo({ className = "" }: { className?: string }) {
@@ -61,8 +61,8 @@ export default function Landing() {
   useEffect(() => {
     const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
     if (reduce) {
-      setGone(true);
-      return;
+      const timer = window.setTimeout(() => setGone(true), 0);
+      return () => window.clearTimeout(timer);
     }
     const t1 = window.setTimeout(() => setLeave(true), 980);
     const t2 = window.setTimeout(() => setGone(true), 1980);
@@ -126,7 +126,7 @@ export default function Landing() {
         if (menuRef.current) {
           chrome.dataset.tone = "dark";
         } else {
-          const hit = document.elementsFromPoint(window.innerWidth / 2, 96).find((el) => {
+          const hit = document.elementsFromPoint(window.innerWidth - 90, 96).find((el) => {
             return !el.closest(".mk-chrome, .mk-menu, .mk-loader");
           });
           const zone = hit?.closest<HTMLElement>("[data-tone]");
@@ -163,7 +163,7 @@ export default function Landing() {
       },
       { threshold: 0.28 },
     );
-    [quoteRef.current, splitRef.current, closeRef.current].forEach((el) => {
+    [quoteRef.current, splitRef.current, closeRef.current, ...document.querySelectorAll<HTMLElement>(".mk-flow li")].forEach((el) => {
       if (el) watch.observe(el);
     });
 
@@ -179,121 +179,8 @@ export default function Landing() {
 
   useEffect(() => {
     const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-    const fine = window.matchMedia("(pointer: fine)").matches;
-    if (reduce || !fine) return;
-
-    let target = window.scrollY;
-    let current = window.scrollY;
-    let frame = 0;
-    let fromUs = false;
-    let last = performance.now();
-
-    const limit = () =>
-      Math.max(0, document.documentElement.scrollHeight - window.innerHeight);
-
-    const step = (now: number) => {
-      const dt = Math.min(34, now - last);
-      last = now;
-      const dest = Math.min(limit(), Math.max(0, target));
-      target = dest;
-      const gain = 1 - Math.pow(0.78, dt / 16.67);
-      current += (dest - current) * gain;
-      if (Math.abs(dest - current) < 0.35) current = dest;
-      fromUs = true;
-      window.scrollTo(0, current);
-      fromUs = false;
-      if (current !== dest) frame = requestAnimationFrame(step);
-      else frame = 0;
-    };
-
-    const kick = () => {
-      if (!frame) frame = requestAnimationFrame(step);
-    };
-
-    scrollToRef.current = (y: number) => {
-      target = y;
-      kick();
-    };
-
-    const onWheel = (event: WheelEvent) => {
-      if (event.ctrlKey) return;
-      event.preventDefault();
-      if (menuRef.current) return;
-      let dy = event.deltaY;
-      if (event.deltaMode === 1) dy *= 16;
-      if (event.deltaMode === 2) dy *= window.innerHeight;
-      target = Math.min(limit(), Math.max(0, target + dy));
-      kick();
-    };
-
-    const onKey = (event: KeyboardEvent) => {
-      if (menuRef.current) return;
-      const active = document.activeElement;
-      if (
-        active instanceof HTMLElement &&
-        active !== document.body &&
-        (active.tagName === "BUTTON" ||
-          active.tagName === "A" ||
-          active.tagName === "INPUT" ||
-          active.tagName === "TEXTAREA")
-      ) {
-        return;
-      }
-      const page = window.innerHeight * 0.86;
-      const amount =
-        event.key === "ArrowDown" ? 72
-        : event.key === "ArrowUp" ? -72
-        : event.key === "PageDown" ? page
-        : event.key === "PageUp" ? -page
-        : event.key === " " ? (event.shiftKey ? -page : page)
-        : null;
-      if (event.key === "Home") {
-        event.preventDefault();
-        target = 0;
-        kick();
-        return;
-      }
-      if (event.key === "End") {
-        event.preventDefault();
-        target = limit();
-        kick();
-        return;
-      }
-      if (amount == null) return;
-      event.preventDefault();
-      target = Math.min(limit(), Math.max(0, target + amount));
-      kick();
-    };
-
-    const onNativeScroll = () => {
-      if (fromUs) return;
-      current = target = window.scrollY;
-    };
-
-    const onClick = (event: MouseEvent) => {
-      if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
-      const link = (event.target as HTMLElement | null)?.closest('a[href^="#"]');
-      if (!link) return;
-      const id = link.getAttribute("href")?.slice(1);
-      const el = id ? document.getElementById(id) : null;
-      if (!el) return;
-      event.preventDefault();
-      target = el.getBoundingClientRect().top + window.scrollY;
-      kick();
-    };
-
-    window.addEventListener("wheel", onWheel, { passive: false });
-    window.addEventListener("keydown", onKey);
-    window.addEventListener("scroll", onNativeScroll, { passive: true });
-    document.addEventListener("click", onClick);
-    return () => {
-      scrollToRef.current = null;
-      cancelAnimationFrame(frame);
-      window.removeEventListener("wheel", onWheel);
-      window.removeEventListener("keydown", onKey);
-      window.removeEventListener("scroll", onNativeScroll);
-      document.removeEventListener("click", onClick);
-    };
+    scrollToRef.current = (top) => window.scrollTo({ top, behavior: reduce ? "instant" : "smooth" });
+    return () => { scrollToRef.current = null; };
   }, []);
 
   useEffect(() => {
@@ -335,6 +222,7 @@ export default function Landing() {
           onClick={dismiss}
           aria-label={t("landing.skip")}
         >
+          <img src="/brand/mark-ink.png" alt="" className="mk-loader-mark" />
           <span>Load Markestra</span>
         </button>
       )}
@@ -344,6 +232,7 @@ export default function Landing() {
           <Arrow />
           {t("landing.enter")}
         </Link>
+        <div className="mk-chrome-right">
         <button
           type="button"
           className="mk-menu-btn"
@@ -353,9 +242,11 @@ export default function Landing() {
         >
           <i className="mk-burger" />
         </button>
+        <BrandHome onClick={closeMenu} />
+        </div>
       </header>
 
-      <div className={`mk-menu${menu ? " is-open" : ""}`} data-tone="dark">
+      <div className={`mk-menu${menu ? " is-open" : ""}`} data-tone="dark" inert={!menu}>
         <nav>
           <a className="mk-menu-link" href="#split" onClick={closeMenu}>{t("landing.splitShop")}</a>
           <a className="mk-menu-link" href="#hall" onClick={closeMenu}>{t("landing.splitPromote")}</a>

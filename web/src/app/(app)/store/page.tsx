@@ -34,7 +34,8 @@ export default function StorePage() {
   };
 
   useEffect(() => {
-    void load();
+    const timer = window.setTimeout(() => void load(), 0);
+    return () => window.clearTimeout(timer);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -49,6 +50,7 @@ export default function StorePage() {
       setError(body.error || t("store.loadError"));
       return;
     }
+    void useStore.getState().load();
     setOrders((current) => current.map((order) => (order.id === id ? body : order)));
   };
 
@@ -131,7 +133,7 @@ export default function StorePage() {
                         <button
                           key={status}
                           type="button"
-                          disabled={order.status === status}
+                          disabled={order.status === status || !({placed:["preparing","cancelled"],preparing:["completed","cancelled"],completed:[],cancelled:[]} as Record<string,string[]>)[order.status].includes(status)}
                           onClick={() => void setStatus(order.id, status)}
                           className={`rounded-lg px-2 py-1 text-xs ${
                             order.status === status

@@ -14,6 +14,8 @@ import {
   Textarea,
 } from "@/components/ui";
 import { useI18n } from "@/lib/i18n";
+import { readPhotoFile } from "@/lib/photos";
+import type { Product } from "@/lib/types";
 import { isPhotoSrc } from "@/lib/image";
 
 const EMOJI = ["🍱", "☕", "🥮", "🍰", "🍜", "🍔", "🧋", "🎁"];
@@ -21,10 +23,15 @@ const EMOJI = ["🍱", "☕", "🥮", "🍰", "🍜", "🍔", "🧋", "🎁"];
 export default function ProductsPage() {
   const products = useStore((s) => s.products);
   const addProduct = useStore((s) => s.addProduct);
+  const updateProduct = useStore((s) => s.updateProduct);
   const removeProduct = useStore((s) => s.removeProduct);
   const setProductListed = useStore((s) => s.setProductListed);
   const { t } = useI18n();
 
+  const [editing, setEditing] = useState<string | null>(null);
+  const [stock, setStock] = useState("100");
+  const [saving, setSaving] = useState(false);
+  const [formError, setFormError] = useState("");
   const [open, setOpen] = useState(false);
   const [name, setName] = useState("");
   const [desc, setDesc] = useState("");
@@ -33,6 +40,9 @@ export default function ProductsPage() {
   const [emoji, setEmoji] = useState("🍱");
 
   const reset = () => {
+    setEditing(null);
+    setStock("100");
+    setFormError("");
     setName("");
     setDesc("");
     setPrice("");
@@ -41,16 +51,18 @@ export default function ProductsPage() {
     setOpen(false);
   };
 
-  const save = () => {
-    if (!name.trim() || !price) return;
-    addProduct({
-      name: name.trim(),
-      description: desc.trim(),
-      price: Number(price),
-      originalPrice: original ? Number(original) : undefined,
-      image: emoji,
-    });
-    reset();
+  const editProduct = (product:Product) => {
+    setEditing(product.id); setName(product.name); setDesc(product.description);setPrice(String(product.price));setOriginal(product.originalPrice == null ? "":String(product.originalPrice));setEmoji(product.image || "🍱");setStock(String(product.stock));setFormError("");setOpen(true);
+  };
+  const save = async () => {
+    if(saving) return;
+    if(!name.trim() || !price || !Number.isFinite(Number(price)) || Number(price)<0 || !Number.isSafeInteger(Number(stock)) || Number(stock)<0) {setFormError("请填写名称、有效价格和非负整数库存");return;}
+    setSaving(true);
+    const data={ name:name.trim(),description:desc.trim(),price:Number(price),originalPrice:original ? Number(original):undefined,image:emoji,stock:Number(stock) };
+    if(editing) await updateProduct(editing,{...data,originalPrice:original ? Number(original):null}); else await addProduct(data);
+    setSaving(false);
+    const error=useStore.getState().error;
+    if(error) setFormError(error); else reset();
   };
 
   return (
@@ -80,7 +92,7 @@ export default function ProductsPage() {
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {products.map((p) => (
             <Card key={p.id} className="group overflow-hidden">
-              <div className="flex aspect-[16/10] items-center justify-center bg-gradient-to-br from-ink-800 to-ink-900 text-6xl">
+              <div className={`product-art flex aspect-[16/10] items-center justify-center text-6xl ${isPhotoSrc(p.image) ? "has-photo" : ""}`}>
                 {isPhotoSrc(p.image) ? (
                   // eslint-disable-next-line @next/next/no-img-element
                   <img src={p.image} alt="" className="h-full w-full object-cover" />
@@ -99,6 +111,7 @@ export default function ProductsPage() {
                   </button>
                 </div>
                 <p className="mt-1 line-clamp-2 text-sm text-muted">{p.description}</p>
+                <div className="mt-3 flex items-center justify-between text-xs"><span className={p.stock ? "text-muted":"text-bad"}>库存 {p.stock}</span><button onClick={() => editProduct(p)} className="text-brand-300">编辑商品</button></div>
                 <div className="mt-3 flex items-center justify-between gap-2">
                   <div className="flex items-baseline gap-2">
                     <span className="text-lg font-bold text-brand-300">¥{p.price}</span>
@@ -129,7 +142,7 @@ export default function ProductsPage() {
           <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" onClick={reset} />
           <Card className="relative z-10 w-full max-w-lg animate-in p-6">
             <div className="mb-4 flex items-center justify-between">
-              <h2 className="font-display text-lg text-cream">{t("prod.modalTitle")}</h2>
+              <h2 className="font-display text-lg text-cream">{editing ? "编辑商品" : t("prod.modalTitle")}</h2>
               <button onClick={reset} className="rounded-lg p-1.5 text-subtle hover:bg-ink-800">
                 <X size={18} />
               </button>
@@ -151,6 +164,9 @@ export default function ProductsPage() {
                   ))}
                 </div>
               </div>
+              <Field label="商品实拍"><Input type="file" accept="image/*" onChange={async(e) => { const file=e.target.files?.[0];if(!file) return; try {setEmoji(await readPhotoFile(file));} catch {setFormError("图片读取失败，请重试");} }} /></Field>
+              <Field label="可售库存" required><Input type="number" min={0} max={1000000} step={1} value={stock} onChange={(e)=>setStock(e.target.value)} /></Field>
+              {formError && <p className="text-sm text-bad">{formError}</p>}
               <Field label={t("prod.name")} required>
                 <Input value={name} onChange={(e) => setName(e.target.value)} placeholder={t("prod.namePh")} />
               </Field>
@@ -170,7 +186,7 @@ export default function ProductsPage() {
               <Button variant="secondary" onClick={reset}>
                 {t("common.cancel")}
               </Button>
-              <Button onClick={save} disabled={!name.trim() || !price}>
+              <Button onClick={save} disabled={saving || !name.trim() || !price}>
                 {t("prod.saveProduct")}
               </Button>
             </div>

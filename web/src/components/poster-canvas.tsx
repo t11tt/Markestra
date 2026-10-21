@@ -1,6 +1,7 @@
 "use client";
 
 import { MutableRefObject, useEffect, useRef } from "react";
+import { posterBackground } from "@/lib/poster-templates";
 import {
   POSTER_H,
   POSTER_W,
@@ -25,7 +26,7 @@ export function PosterCanvas({
 }) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const onDrawRef = useRef(onDraw);
-  onDrawRef.current = onDraw;
+  useEffect(() => { onDrawRef.current = onDraw; }, [onDraw]);
   const inputKey = JSON.stringify(input);
 
   useEffect(() => {
@@ -36,15 +37,17 @@ export function PosterCanvas({
     const current = JSON.parse(inputKey) as PosterInput;
     let cancelled = false;
     const sources = current.images?.length ? current.images : current.image ? [current.image] : [];
-    Promise.all(sources.map((src) => loadPosterPhoto(src))).then((loaded) => {
+    Promise.all([Promise.all(sources.map((src) => loadPosterPhoto(src))), loadPosterPhoto(posterBackground(current.style))]).then(([loaded, background]) => {
       if (cancelled) return;
       onDrawRef.current(
         renderPoster(
           ctx,
           current,
-          loaded.filter((photo): photo is HTMLImageElement => Boolean(photo))
+          loaded.filter((photo): photo is HTMLImageElement => Boolean(photo)),
+          background
         )
       );
+      canvas.dataset.posterStyle = current.style || current.layout;
     });
     return () => {
       cancelled = true;

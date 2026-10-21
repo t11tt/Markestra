@@ -7,6 +7,7 @@ import { asRecord, jsonError, readJson } from "@/server/http";
 import { isStatus, mapCampaign, money } from "@/server/map";
 import { currentActor } from "@/server/session";
 import type { ChannelContent } from "@/lib/types";
+import { isPosterStyle } from "@/lib/poster-templates";
 
 export const dynamic = "force-dynamic";
 
@@ -56,6 +57,10 @@ export async function PATCH(
   if (!body) return jsonError("请求格式不正确");
 
   const data: Prisma.CampaignUpdateInput = {};
+  if ("posterStyle" in body) {
+    if (!isPosterStyle(body.posterStyle)) return jsonError("海报模板不正确");
+    data.posterStyle = body.posterStyle;
+  }
   let nextContents: ChannelContent[] | undefined;
   if (typeof body.name === "string" && body.name.trim()) data.name = body.name.trim();
   if (isStatus(body.status)) data.status = body.status;

@@ -8,8 +8,9 @@
     "start": "next start",
     "lint": "eslint",
     "db:seed": "tsx prisma/seed.ts",
-    "test": "tsx --test src/server/metrics.test.ts src/server/drafts.test.ts",
-    "postinstall": "prisma generate"
+    "test": "tsx --test src/server/metrics.test.ts src/server/drafts.test.ts src/server/deepseek.test.ts",
+    "postinstall": "prisma generate",
+    "test:commerce": "node --env-file=.env scripts/smoke-commerce.mjs"
   },
   "prisma": {
     "seed": "tsx prisma/seed.ts"

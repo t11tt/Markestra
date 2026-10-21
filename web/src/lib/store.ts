@@ -63,6 +63,7 @@ function queueCampaignSave(id: string, patch: CampaignPatch) {
   const confirming =
     Array.isArray(patch.contents) && patch.contents.some((item) => item.confirmed);
   const immediate =
+    patch.posterStyle !== undefined ||
     patch.status !== undefined ||
     patch.metrics !== undefined ||
     patch.price !== undefined ||
@@ -100,6 +101,7 @@ export interface AppState {
   load: () => Promise<void>;
   updateBrand: (b: Partial<Brand>) => Promise<boolean>;
   addProduct: (p: Omit<Product, "id" | "listed"> & { listed?: boolean }) => Promise<void>;
+  updateProduct: (id: string, patch: Partial<Omit<Product,"originalPrice">> & { originalPrice?: number | null }) => Promise<boolean>;
   removeProduct: (id: string) => Promise<void>;
   setProductListed: (id: string, listed: boolean) => Promise<void>;
   addCampaign: (
@@ -161,6 +163,13 @@ export const useStore = create<AppState>()((set, get) => ({
     } catch (error) {
       set({ error: error instanceof Error ? error.message : "保存商品失败" });
     }
+  },
+  updateProduct: async (id, patch) => {
+    try {
+      const product = await api<Product>(`/api/products/${id}`, {method:"PATCH", body:JSON.stringify(patch)});
+      set((state) => ({products:state.products.map((item)=>item.id===id ? product:item),error:null}));
+      return true;
+    } catch(error) { set({error:error instanceof Error ? error.message:"保存商品失败"}); return false; }
   },
   setProductListed: async (id, listed) => {
     const previous = get().products;

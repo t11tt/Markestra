@@ -54,6 +54,7 @@ export async function readCatalog(slug = DEMO_SLUG): Promise<(ShopCatalog & { sl
             : undefined;
       return {
         id: product.id,
+        stock: product.stock,
         name: product.name,
         description: product.description,
         image: displayImage(product.image),
@@ -94,13 +95,14 @@ export async function placeOrder(input: {
   const note = input.note?.trim().slice(0, 200) || "";
   const merged = new Map<string, number>();
   for (const item of input.items) {
-    const qty = Math.floor(item.qty);
-    if (!item.productId || qty < 1 || qty > 99) throw new Error("商品数量不正确");
+    const qty = item.qty;
+    if (!item.productId || !Number.isSafeInteger(qty) || qty < 1 || qty > 99) throw new Error("商品数量不正确");
     merged.set(item.productId, (merged.get(item.productId) ?? 0) + qty);
   }
   if (merged.size === 0 || merged.size > 20) throw new Error("请先选择商品");
 
   const lines = [...merged.entries()].map(([productId, qty]) => {
+    if (qty > 99) throw new Error("单个商品最多购买99件");
     const product = catalog.products.find((row) => row.id === productId);
     if (!product) throw new Error("有商品已下架，请刷新网店");
     return { productId, name: product.name, price: product.price, qty };
@@ -109,14 +111,15 @@ export async function placeOrder(input: {
 
   for (let attempt = 0; attempt < 5; attempt++) {
     try {
-      const created = await prisma.shopOrder.create({
+      const created = await prisma.$transaction(async (tx) => {
+        const workspace = await tx.workspace.findUniqueOrThrow({where:{slug:catalog.slug},select:{id:true}});
+        for (const line of lines) {
+          const reserved = await tx.product.updateMany({where:{id:line.productId,workspaceId:workspace.id,listed:true,stock:{gte:line.qty}},data:{stock:{decrement:line.qty}}});
+          if (reserved.count !== 1) throw new Error(`${line.name} 库存不足或已下架，请刷新网店`);
+        }
+        return tx.shopOrder.create({
         data: {
-          workspaceId: (
-            await prisma.workspace.findUniqueOrThrow({
-              where: { slug: catalog.slug },
-              select: { id: true },
-            })
-          ).id,
+          workspaceId: workspace.id,
           code: orderCode(),
           customerName: name,
           phone,
@@ -135,6 +138,7 @@ export async function placeOrder(input: {
           },
         },
         include: { items: true },
+        });
       });
       return mapOrder(created);
     } catch (error) {
@@ -195,14 +199,19 @@ export async function updateOrderStatus(
   status: ShopOrderStatus
 ): Promise<ShopOrder | null> {
   if (!STATUSES.includes(status)) return null;
-  const existing = await prisma.shopOrder.findFirst({
-    where: { id, workspaceId },
+  return prisma.$transaction(async (tx) => {
+    const existing = await tx.shopOrder.findFirst({where:{id,workspaceId},include:{items:true}});
+    if (!existing) return null;
+    if (existing.status === status) return mapOrder(existing);
+    const allowed: Record<string, string[]> = {placed:["preparing","cancelled"],preparing:["completed","cancelled"],completed:[],cancelled:[]};
+    if (!allowed[existing.status]?.includes(status)) throw new Error("订单状态不能这样变更，请刷新后重试");
+    const changed = await tx.shopOrder.updateMany({where:{id,workspaceId,status:existing.status},data:{status}});
+    if (changed.count !== 1) throw new Error("订单已更新，请刷新后重试");
+    if(status === "cancelled") {
+      for(const item of existing.items) {
+        if(item.productId) await tx.product.updateMany({where:{id:item.productId,workspaceId},data:{stock:{increment:item.qty}}});
+      }
+    }
+    return mapOrder(await tx.shopOrder.findUniqueOrThrow({where:{id},include:{items:true}}));
   });
-  if (!existing) return null;
-  const saved = await prisma.shopOrder.update({
-    where: { id },
-    data: { status },
-    include: { items: true },
-  });
-  return mapOrder(saved);
 }

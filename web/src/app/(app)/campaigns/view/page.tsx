@@ -24,10 +24,13 @@ import {
   Textarea,
 } from "@/components/ui";
 import { useI18n } from "@/lib/i18n";
-import { Campaign, CampaignType, Channel, CHANNELS, CAMPAIGN_TYPES, ChannelContent, STATUS_META } from "@/lib/types";
+import { Campaign, Channel, CHANNELS, ChannelContent, STATUS_META } from "@/lib/types";
 import { PosterCanvas, PosterHandle } from "@/components/poster-canvas";
 import { isPhotoSrc } from "@/lib/image";
-import { capturePosterPng } from "@/lib/poster";
+import { POSTER_STYLES, capturePosterPng } from "@/lib/poster";
+import { downloadAssetPack } from "@/lib/asset-pack";
+import Image from "next/image";
+import { nextPosterStyle } from "@/lib/poster-templates";
 import { CampaignOps } from "@/components/campaign-ops";
 
 function useToast() {
@@ -185,7 +188,9 @@ function WorkbenchInner() {
   const [regenCh, setRegenCh] = useState<Channel | null>(null);
   const [versions, setVersions] = useState<{ id: string; title: string; createdAt: number }[]>([]);
   const [versionTick, setVersionTick] = useState(0);
-  const [posterLayout, setPosterLayout] = useState<CampaignType>("combo");
+  const posterLayout = campaign?.type ?? "combo";
+  const posterStyle = campaign?.posterStyle ?? "tea";
+  const [posterTitle, setPosterTitle] = useState("");
   const [posterCut, setPosterCut] = useState(false);
   const posterRef = useRef<PosterHandle | null>(null);
   const { show, node: toast } = useToast();
@@ -222,12 +227,10 @@ function WorkbenchInner() {
     }
   };
 
-  useEffect(() => {
-    if (campaign) setPosterLayout(campaign.type);
-  }, [campaign?.id, campaign?.type]);
 
   useEffect(() => {
     if (!campaign || started.current) return;
+    const timer = window.setTimeout(() => {
     if (active === null && campaign.contents.length > 0) {
       setActive(campaign.contents[0].channel);
     }
@@ -235,6 +238,8 @@ function WorkbenchInner() {
       started.current = true;
       void runGenerate();
     }
+    }, 0);
+    return () => window.clearTimeout(timer);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [campaign]);
 
@@ -296,8 +301,9 @@ function WorkbenchInner() {
         channel: item.channel,
         png: await capturePosterPng({
           layout: posterLayout,
+          style: posterStyle,
           label: t(`type.${posterLayout}`),
-          title: item.title || campaign.productName,
+          title: posterTitle.trim() || item.title || campaign.productName,
           detail: campaign.productDetail,
           price: campaign.price,
           originalPrice: campaign.originalPrice,
@@ -325,10 +331,12 @@ function WorkbenchInner() {
       show(data.error || t("wb.genFailed"));
       return;
     }
-    const channel = activeContent?.channel ?? campaign.channels[0] ?? "poster";
-    const ok = posterRef.current?.download(`${campaign.code}-${channel}.png`) ?? false;
-    if (ok) window.dispatchEvent(new Event("markestra-ops"));
-    show(ok ? t("wb.toastDownload") : t("wb.genFailed"));
+    downloadAssetPack(campaign.code,items.map((item)=>{
+      const content=confirmed.find((c)=>c.channel===item.channel)!;
+      return {...item,text:`${content.title}\n\n${content.body}\n\n${content.tags.map((tag)=>"#"+tag).join(" ")}\n${content.cta}`};
+    }));
+    window.dispatchEvent(new Event("markestra-ops"));
+    show(t("wb.toastDownload"));
   };
 
   const copyContent = (c: ChannelContent) => {
@@ -491,6 +499,7 @@ function WorkbenchInner() {
                   </div>
 
                   {genError && <p className="mb-3 text-sm text-bad">{genError}</p>}
+                  {model && model !== "mock" && <p className="mb-3 text-xs text-ok">已由 {model} 生成 · 请核对后确认</p>}
                   {model === "mock" && (
                     <p className="mb-3 text-xs text-muted">{t("wb.mockNote")}</p>
                   )}
@@ -588,28 +597,52 @@ function WorkbenchInner() {
           <Card className="p-5">
             <div className="mb-1 text-sm font-semibold text-cream">{t("wb.poster")}</div>
             <p className="mb-3 text-xs text-muted">{t("wb.posterHint")}</p>
-            <div className="mb-3 flex flex-wrap gap-1.5">
-              {CAMPAIGN_TYPES.map((item) => (
-                <button
-                  key={item.id}
-                  onClick={() => setPosterLayout(item.id)}
-                  className={`rounded-lg px-2.5 py-1 text-xs font-medium transition ${
-                    posterLayout === item.id
-                      ? "bg-brand-500 text-white"
-                      : "bg-ink-900 text-muted ring-1 ring-inset ring-line"
-                  }`}
-                >
-                  {t(`type.${item.id}`)}
-                </button>
-              ))}
+            <div className="poster-picker">
+              <section aria-labelledby="scene-template-label">
+                <div className="poster-picker-heading">
+                  <div>
+                    <h3 id="scene-template-label">场景模板 <span>05</span></h3>
+                    <p>自带材质与光影，生成时自动轮换</p>
+                  </div>
+                  <button type="button" className="poster-shuffle" onClick={() => updateCampaign(campaign.id, {posterStyle:nextPosterStyle(posterStyle)})}><RefreshCw size={12} /> 换一张</button>
+                </div>
+                <div className="template-gallery" role="group" aria-label="场景模板">
+                  {POSTER_STYLES.filter((style) => "background" in style).map((style) => (
+                    <button key={style.id} type="button" className="scene-template" aria-pressed={posterStyle === style.id} onClick={() => updateCampaign(campaign.id, {posterStyle:style.id})}>
+                      <span className="template-thumbnail">
+                        {"background" in style && <Image unoptimized src={style.background} alt="" width={240} height={180} />}
+                        {posterStyle === style.id && <span className="template-check"><Check size={12} /></span>}
+                      </span>
+                      <span className="template-name">{style.name}</span>
+                    </button>
+                  ))}
+                </div>
+              </section>
+              <section className="classic-palette" aria-labelledby="classic-palette-label">
+                <div className="poster-picker-heading">
+                  <div><h3 id="classic-palette-label">经典配色 <span>04</span></h3><p>简洁色调，突出商品本身</p></div>
+                </div>
+                <div className="palette-options" role="group" aria-label="经典配色">
+                  {POSTER_STYLES.filter((style) => !("background" in style)).map((style) => (
+                    <button key={style.id} type="button" className="palette-option" aria-pressed={posterStyle === style.id} onClick={() => updateCampaign(campaign.id, {posterStyle:style.id})}>
+                      <span className="palette-swatch" style={{background:style.color}}>{posterStyle === style.id && <Check size={16} />}</span>
+                      <span>{style.name}</span>
+                    </button>
+                  ))}
+                </div>
+              </section>
+              <p className="poster-picker-note">已选：{POSTER_STYLES.find((style) => style.id === posterStyle)?.name} · 自动保存到此活动</p>
             </div>
+            <div className="mb-4"><Field label="海报主标题" hint="可单独调整，不改变渠道文案"><Input value={posterTitle} onChange={(e) => setPosterTitle(e.target.value)} placeholder={campaign.productName} maxLength={40} /></Field></div>
+            {!campaign.images?.length && !isPhotoSrc(campaign.image) && <p className="mb-3 text-xs text-warn">添加活动时上传商品实拍，可获得照片海报效果。</p>}
             <PosterCanvas
               handleRef={posterRef}
               onDraw={(result) => setPosterCut(result.titleTruncated || result.detailTruncated)}
               input={{
                 layout: posterLayout,
+          style: posterStyle,
                 label: t(`type.${posterLayout}`),
-                title: activeContent?.title || campaign.productName,
+                title: posterTitle.trim() || activeContent?.title || campaign.productName,
                 detail: campaign.productDetail,
                 price: campaign.price,
                 originalPrice: campaign.originalPrice,

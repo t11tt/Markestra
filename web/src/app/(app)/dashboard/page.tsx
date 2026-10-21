@@ -17,7 +17,7 @@ import {
 import { useStore } from "@/lib/store";
 import { Badge, CampaignGlyph, Card, PageContainer } from "@/components/ui";
 import { useI18n } from "@/lib/i18n";
-import { CAMPAIGN_TYPES, STATUS_META, CHANNELS, Campaign } from "@/lib/types";
+import { CAMPAIGN_TYPES, STATUS_META, Campaign } from "@/lib/types";
 
 function StatCard({
   icon,
@@ -72,7 +72,7 @@ export default function DashboardPage() {
   return (
     <PageContainer>
       {/* Hero */}
-      <div className="relative mb-6 overflow-hidden rounded-3xl border border-white/10 bg-white/[0.04] backdrop-blur-xl grain">
+      <div className="dashboard-hero relative mb-6 overflow-hidden rounded-3xl border border-white/10 bg-white/[0.04] backdrop-blur-xl grain">
         <div className="glowfield opacity-40" />
         <div className="relative flex flex-col gap-6 p-6 lg:flex-row lg:items-center lg:justify-between lg:p-8">
           <div>

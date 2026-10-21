@@ -1,10 +1,12 @@
+import { callDeepSeek, deepseekModel } from "./deepseek";
+import { nextPosterStyle } from "@/lib/poster-templates";
 import { Prisma } from "@prisma/client";
 import { genChannelContent } from "@/lib/mockAI";
 import type { Channel, ChannelContent } from "@/lib/types";
 import { prisma } from "./db";
 import { isChannel, mapCampaign } from "./map";
 
-export const PROMPT_VERSION = "content-v1";
+export const PROMPT_VERSION = "content-v2-social";
 
 const CHANNELS: Channel[] = ["xiaohongshu", "moments", "douyin"];
 
@@ -27,6 +29,9 @@ interface Snapshot {
   address: string;
   style: string;
   audience: string;
+  category?: string;
+  offer?: string;
+  intent?: string;
 }
 
 function sleep(ms: number) {
@@ -257,9 +262,14 @@ export async function generateCampaign(campaignId: string, workspaceId: string, 
     address: campaign.workspace.brand.address,
     style: campaign.workspace.brand.style,
     audience: campaign.workspace.brand.audience,
+    category: campaign.category,
+    offer: campaign.offer,
+    intent: campaign.intent,
   };
 
-  const modelName = process.env.DASHSCOPE_API_KEY
+  const modelName = process.env.DEEPSEEK_API_KEY?.trim()
+    ? deepseekModel()
+    : process.env.DASHSCOPE_API_KEY
     ? qwenTarget(process.env.DASHSCOPE_API_KEY).model
     : "mock";
 
@@ -285,9 +295,16 @@ export async function generateCampaign(campaignId: string, workspaceId: string, 
   });
 
   try {
-    const raw = process.env.DASHSCOPE_API_KEY
+    const raw = process.env.DEEPSEEK_API_KEY?.trim()
+      ? await callDeepSeek(snapshot, channels)
+      : process.env.DASHSCOPE_API_KEY
       ? await callQwen(snapshot, channels)
       : mockContents(snapshot, channels, onlyChannel ? Date.now() % 7 : 0);
+    if (raw && typeof raw === "object" && Array.isArray((raw as {contents?: unknown}).contents)) {
+      for (const item of (raw as {contents: {title?: string}[]}).contents) {
+        if (item && typeof item.title === "string" && !item.title.trim()) item.title = snapshot.productName;
+      }
+    }
     const generated = asContents(raw, channels);
     if (!generated) throw new Error("模型返回的格式不正确");
     const warnings = checkFacts(generated, snapshot);
@@ -325,7 +342,7 @@ export async function generateCampaign(campaignId: string, workspaceId: string, 
       });
       await tx.campaign.update({
         where: { id: campaignId },
-        data: { contents: stamped as unknown as Prisma.InputJsonValue, status: "review" },
+        data: { contents: stamped as unknown as Prisma.InputJsonValue, status: "review", posterStyle: nextPosterStyle(campaign.posterStyle) },
       });
       await tx.generation.update({
         where: { id: generation.id },

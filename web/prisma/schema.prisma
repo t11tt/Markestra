@@ -59,6 +59,7 @@ model Product {
   originalPrice Float?
   description   String
   image         String?
+  stock         Int       @default(100)
   listed        Boolean   @default(true)
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
@@ -120,6 +121,7 @@ model Campaign {
   images        Json      @default("[]")
   category      String    @default("")
   offer         String    @default("")
+  posterStyle   String    @default("tea")
   intent        String    @default("")
   contents      Json
   metrics       Json?

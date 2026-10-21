@@ -18,7 +18,9 @@ export async function PATCH(
   if (!body || typeof body.status !== "string" || !STATUSES.includes(body.status as ShopOrderStatus)) {
     return jsonError("订单状态不正确");
   }
+  try {
   const order = await updateOrderStatus(actor.workspaceId, id, body.status as ShopOrderStatus);
   if (!order) return jsonError("找不到这笔订单", 404);
   return Response.json(order);
+  } catch(error) { return jsonError(error instanceof Error ? error.message : "更新订单失败",409); }
 }

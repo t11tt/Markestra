@@ -1,3 +1,5 @@
+import Link from "next/link";
+
 export function Mark({
   tone = "lime",
   className = "",
@@ -35,5 +37,14 @@ export function Logo({
       draggable={false}
       className={`block h-auto w-auto max-w-full ${className}`}
     />
+  );
+}
+
+export function BrandHome({ onClick }: { onClick?: () => void }) {
+  return (
+    <Link href="/#split" onClick={onClick} className="brand-home" aria-label="Markestra · 返回功能介绍" title="返回功能介绍">
+      <Mark tone="ink" className="brand-home-mark" />
+      <span className="brand-home-word">markestra</span>
+    </Link>
   );
 }
